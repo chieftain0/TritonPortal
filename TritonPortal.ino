@@ -50,7 +50,7 @@ void loop()
 void handleRoot()
 {
   String html = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'>";
-  html += "<title>ESP32 ESC & RC Monitor</title>";
+  html += "<title>Triton Portal</title>";
   html += "<style>";
   html += "body { text-align: center; font-family: Arial, sans-serif; }";
   html += "#container { position: relative; width: 300px; height: 300px; border-radius: 50%; border: 2px solid black; margin: auto; }";
@@ -85,7 +85,7 @@ void handleRoot()
   html += "}; xhr.send(); }";
   html += "setInterval(updateData, 500);";
   html += "</script></head><body>";
-  html += "<h1>ESP32S3 Control</h1>";
+  html += "<h1>Triton Portal</h1>";
   html += "<h2>ESC Control</h2>";
   for (int i = 1; i <= 4; i++)
   {
