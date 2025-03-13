@@ -60,14 +60,14 @@ void setup()
 
   pinMode(ch1, INPUT);
   pinMode(ch2, INPUT);
-  pinMode(ledPin, OUTPUT);
-  analogWrite(ledPin, ledBrightness);
+
+  ledcAttach(ledPin, 5000, 8);
 
   attachInterrupt(digitalPinToInterrupt(ch1), pulseCh1, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ch2), pulseCh2, CHANGE);
 
   server.on("/", handleRoot);
-  server.on("/set", handleSet);
+  server.on("/ESC", handleESC);
   server.on("/data", handleData);
   server.on("/led", handleLed);
 
@@ -106,7 +106,7 @@ void handleRoot()
   html += "</style>";
   html += "<script>";
   html += "var xhr = new XMLHttpRequest();";
-  html += "function updateESC(ESC, value){ xhr.open('GET', '/set?ESC=' + ESC + '&value=' + value, true); xhr.send(); }";
+  html += "function updateESC(ESC, value){ xhr.open('GET', '/ESC?ESC=' + ESC + '&value=' + value, true); xhr.send(); }";
   html += "function updateLED(value){ xhr.open('GET', '/led?value=' + value, true); xhr.send(); }";
   html += "function updateData(){ xhr.open('GET', '/data', true); xhr.onreadystatechange = function(){";
   html += "if(xhr.readyState == 4 && xhr.status == 200){";
@@ -131,7 +131,7 @@ void handleRoot()
 
   html += "}";
   html += "}; xhr.send(); }";
-  html += "setInterval(updateData, 500);";
+  html += "setInterval(updateData, 100);";
   html += "</script></head><body>";
   html += "<h1>Triton Portal</h1>";
   html += "<h2>ESC Control</h2>";
@@ -176,7 +176,7 @@ void handleData()
   server.send(200, "application/json", json);
 }
 
-void handleSet()
+void handleESC()
 {
   if (!server.hasArg("ESC") || !server.hasArg("value"))
   {
@@ -219,6 +219,6 @@ void handleLed()
     return;
   }
   ledBrightness = server.arg("value").toInt();
-  analogWrite(ledPin, ledBrightness);
+  ledcWrite(ledPin, ledBrightness);
   server.send(200, "text/plain", "OK");
 }
