@@ -18,6 +18,34 @@ int ledBrightness = 128;
 
 const int ESCPins[4] = {6, 7, 15, 16};
 
+volatile unsigned long highTime1 = 1500, highTime2 = 1500;
+
+void IRAM_ATTR pulseCh1()
+{
+  static unsigned long startTime = 0;
+  if (digitalRead(ch1) == HIGH)
+  {
+    startTime = micros();
+  }
+  else
+  {
+    highTime1 = micros() - startTime;
+  }
+}
+
+void IRAM_ATTR pulseCh2()
+{
+  static unsigned long startTime = 0;
+  if (digitalRead(ch2) == HIGH)
+  {
+    startTime = micros();
+  }
+  else
+  {
+    highTime2 = micros() - startTime;
+  }
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -35,16 +63,36 @@ void setup()
   pinMode(ledPin, OUTPUT);
   analogWrite(ledPin, ledBrightness);
 
+  attachInterrupt(digitalPinToInterrupt(ch1), pulseCh1, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ch2), pulseCh2, CHANGE);
+
   server.on("/", handleRoot);
   server.on("/set", handleSet);
   server.on("/data", handleData);
   server.on("/led", handleLed);
+
+  xTaskCreatePinnedToCore(
+      webServerTask,   // Function to implement the task
+      "WebServerTask", // Name of the task
+      8192,            // Stack size
+      NULL,            // Parameters to the task
+      1,               // Task priority
+      NULL,            // Task handle
+      0                // Core 0
+  );
+}
+
+void webServerTask(void *pvParameters)
+{
   server.begin();
+  while (true)
+  {
+    server.handleClient();
+  }
 }
 
 void loop()
 {
-  server.handleClient();
 }
 
 void handleRoot()
@@ -108,11 +156,22 @@ void handleRoot()
 
 void handleData()
 {
-  unsigned long highTime1 = pulseIn(ch1, HIGH, 25000);
-  unsigned long highTime2 = pulseIn(ch2, HIGH, 25000);
-
-  highTime1 = constrain(highTime1, 1000, 2000);
-  highTime2 = constrain(highTime2, 1000, 2000);
+  if (highTime1 < 1000)
+  {
+    highTime1 = 1000;
+  }
+  else if (highTime1 > 2000)
+  {
+    highTime1 = 2000;
+  }
+  if (highTime2 < 1000)
+  {
+    highTime2 = 1000;
+  }
+  else if (highTime2 > 2000)
+  {
+    highTime2 = 2000;
+  }
   String json = "{\"ch1\":" + String(highTime1) + ",\"ch2\":" + String(highTime2) + "}";
   server.send(200, "application/json", json);
 }
