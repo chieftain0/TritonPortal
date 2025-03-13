@@ -23,7 +23,7 @@ volatile unsigned long highTime1 = 1500, highTime2 = 1500;
 void IRAM_ATTR pulseCh1()
 {
   static unsigned long startTime = 0;
-  if (digitalRead(ch1) == HIGH)
+  if (REG_READ(GPIO_IN_REG) & (1 << ch1))
   {
     startTime = micros();
   }
@@ -36,7 +36,7 @@ void IRAM_ATTR pulseCh1()
 void IRAM_ATTR pulseCh2()
 {
   static unsigned long startTime = 0;
-  if (digitalRead(ch2) == HIGH)
+  if (REG_READ(GPIO_IN_REG) & (1 << ch2))
   {
     startTime = micros();
   }
