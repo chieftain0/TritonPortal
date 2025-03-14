@@ -162,7 +162,7 @@ void handleRoot()
   html += "  };";
   html += "  xhr.send();";
   html += "}";
-  html += "setInterval(updateData, 100);";
+  html += "setInterval(updateData, 150);";
   html += "</script></head><body>";
   html += "<h1>Triton Portal</h1>";
   html += "<h2>ESC Control</h2>";
