@@ -20,7 +20,7 @@ const uint8_t ESCPins[4] = {6, 7, 15, 16};
 
 volatile unsigned long highTime1 = 1500, highTime2 = 1500;
 
-volatile bool manualMode = true;
+volatile bool manualMode = false;
 
 void IRAM_ATTR pulseCh1()
 {
@@ -152,6 +152,12 @@ void handleRoot()
   html += "      var y = yInput * radius + 150 - 10;";
   html += "      document.getElementById('ball').style.left = x + 'px';";
   html += "      document.getElementById('ball').style.top = y + 'px';";
+  html += "      if(!document.getElementById('manualControl').checked){";
+  html += "         document.getElementById('esc1').value = data.ch1;";
+  html += "         document.getElementById('esc2').value = data.ch1;";
+  html += "         document.getElementById('esc3').value = data.ch2;";
+  html += "         document.getElementById('esc4').value = data.ch2;";
+  html += "      }";
   html += "    }";
   html += "  };";
   html += "  xhr.send();";
@@ -161,12 +167,12 @@ void handleRoot()
   html += "<h1>Triton Portal</h1>";
   html += "<h2>ESC Control</h2>";
   html += "<label for='manualControl'>Manual Control: </label>";
-  html += "<input type='checkbox' id='manualControl' onchange='updateSwitch(this.checked)' /> <small>(Unchecked: RC input mode)</small>";
+  html += "<input type='checkbox' id='manualControl' onchange='updateSwitch(this.checked)' />";
   html += "<br><br>";
   for (int i = 1; i <= 4; i++)
   {
     html += "ESC " + String(i) + ": ";
-    html += "<input type='range' class='escSlider' min='1000' max='2000' value='1500' disabled oninput='updateESC(" + String(i) + ", this.value)' />";
+    html += "<input type='range' class='escSlider' id='esc" + String(i) + "' min='1000' max='2000' value='1500' disabled oninput='updateESC(" + String(i) + ", this.value)' />";
     html += "<br><br>";
   }
   html += "<h2>LED Control</h2>";
