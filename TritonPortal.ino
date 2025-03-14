@@ -1,27 +1,43 @@
+#include <Wire.h>
+#include "BNO055_support.h"
+
 #include <WiFi.h>
 #include <ESP32Servo.h>
 #include <WebServer.h>
 
+// WiFi configuration
 const char *ssid = "TritonPortal";
 const char *password = "";
 
+// IMU and hardware timer
+struct bno055_t BNO;
+struct bno055_euler gyroEulerData;
+TimerHandle_t rtosTimer;
+
+// Server configuration
 WebServer server(80);
 
+// ESC objects
 Servo ESC1;
 Servo ESC2;
 Servo ESC3;
 Servo ESC4;
 
-const uint8_t ch1 = 13, ch2 = 12;
-const uint8_t ledPin = 21;
-uint8_t ledBrightness = 128;
-
+// GPIO pin definitions
 const uint8_t ESCPins[4] = {6, 7, 15, 16};
+const uint8_t ch1 = 13, ch2 = 12;
+const uint8_t SDA_pin = 4, SCL_pin = 5;
+const uint8_t ledPin = 21;
 
+// Global variables
+uint8_t ledBrightness = 128;
 volatile unsigned long highTime1 = 1500, highTime2 = 1500;
-
 volatile bool manualMode = false;
 
+void onTimer(TimerHandle_t xTimer)
+{
+  bno055_read_euler_hrp(&gyroEulerData);
+}
 void IRAM_ATTR pulseCh1()
 {
   static unsigned long startTime = 0;
@@ -34,7 +50,6 @@ void IRAM_ATTR pulseCh1()
     highTime1 = micros() - startTime;
   }
 }
-
 void IRAM_ATTR pulseCh2()
 {
   static unsigned long startTime = 0;
@@ -50,9 +65,11 @@ void IRAM_ATTR pulseCh2()
 
 void setup()
 {
+  Wire.begin(SDA_pin, SCL_pin);
   Serial.begin(115200);
+  SafeDelay(100); // Small delay for i2c init
+
   WiFi.softAP(ssid, password);
-  Serial.print("AP IP address: ");
   Serial.println(WiFi.softAPIP());
 
   ESC1.attach(ESCPins[0]);
@@ -83,6 +100,11 @@ void setup()
       NULL,            // Task handle
       0                // Core 0
   );
+
+  BNO_Init(&BNO);
+  bno055_set_operation_mode(OPERATION_MODE_NDOF);
+  rtosTimer = xTimerCreate("RTOS_Timer", pdMS_TO_TICKS(100), pdTRUE, NULL, onTimer);
+  xTimerStart(rtosTimer, 0);
 }
 
 void webServerTask(void *pvParameters)
@@ -91,6 +113,7 @@ void webServerTask(void *pvParameters)
   while (true)
   {
     server.handleClient();
+    vTaskDelay(1);
   }
 }
 
@@ -270,4 +293,13 @@ void handleSwitch()
     return;
   }
   server.send(200, "text/plain", "OK");
+}
+
+void SafeDelay(unsigned long ms)
+{
+  unsigned long start = millis();
+  while (millis() - start < ms)
+  {
+    yield();
+  }
 }
