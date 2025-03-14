@@ -11,7 +11,10 @@ const char *password = "";
 
 // IMU and hardware timer
 struct bno055_t BNO;
-struct bno055_euler gyroEulerData;
+struct bno055_euler hrpEulerData;
+struct bno055_accel accelData;
+struct bno055_mag magData;
+struct bno055_gyro gyroData;
 TimerHandle_t rtosTimer;
 
 // Server configuration
@@ -36,7 +39,10 @@ volatile bool manualMode = false;
 
 void onTimer(TimerHandle_t xTimer)
 {
-  bno055_read_euler_hrp(&gyroEulerData);
+  bno055_read_euler_hrp(&hrpEulerData); // divide by 16 for °
+  bno055_read_gyro_xyz(&gyroData);      // divide by 16 for °/s
+  bno055_read_accel_xyz(&accelData);    // divide by 100 for m/s^2
+  bno055_read_mag_xyz(&magData);        // divide by 16 for uT
 }
 void IRAM_ATTR pulseCh1()
 {
@@ -126,6 +132,29 @@ void loop()
     ESC3.writeMicroseconds(highTime2);
     ESC4.writeMicroseconds(highTime2);
   }
+
+  // Print the values from IMU
+  Serial.println("HRP");
+  Serial.print("Pitch: " + String(hrpEulerData.p / 16.0) + "° ");
+  Serial.print("Roll: " + String(hrpEulerData.r / 16.0) + "° ");
+  Serial.println("Heading: " + String(hrpEulerData.h / 16.0) + "° ");
+
+  Serial.println("Gyro");
+  Serial.print("X: " + String(gyroData.x / 16.0) + " °/s ");
+  Serial.print("Y: " + String(gyroData.y / 16.0) + " °/s ");
+  Serial.println("Z: " + String(gyroData.z / 16.0) + " °/s ");
+
+  Serial.println("Accel");
+  Serial.print("X: " + String(accelData.x / 100.0) + " m/s^2 ");
+  Serial.print("Y: " + String(accelData.y / 100.0) + " m/s^2 ");
+  Serial.println("Z: " + String(accelData.z / 100.0) + " m/s^2 ");
+
+  Serial.println("Mag");
+  Serial.print("X: " + String(magData.x / 16.0) + " uT ");
+  Serial.print("Y: " + String(magData.y / 16.0) + " uT ");
+  Serial.println("Z: " + String(magData.z / 16.0) + " uT ");
+
+  SafeDelay(5000);
 }
 
 void handleRoot()
