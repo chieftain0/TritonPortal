@@ -201,20 +201,27 @@ void handleRoot()
   html += "      var imu = JSON.parse(xhr_imu.responseText);";
   html += "      document.getElementById('pitch').innerHTML = imu.pitch;";
   html += "      document.getElementById('roll').innerHTML = imu.roll;";
+  html += "      document.getElementById('heading').innerHTML = imu.heading;";
+  html += "      document.getElementById('gyroX').innerHTML = imu.gyroX;";
+  html += "      document.getElementById('gyroY').innerHTML = imu.gyroY;";
+  html += "      document.getElementById('gyroZ').innerHTML = imu.gyroZ;";
+  html += "      document.getElementById('accelX').innerHTML = imu.accelX;";
+  html += "      document.getElementById('accelY').innerHTML = imu.accelY;";
+  html += "      document.getElementById('accelZ').innerHTML = imu.accelZ;";
+  html += "      document.getElementById('magX').innerHTML = imu.magX;";
+  html += "      document.getElementById('magY').innerHTML = imu.magY;";
+  html += "      document.getElementById('magZ').innerHTML = imu.magZ;";
 
-  html += "var boat = document.getElementById('boat');";
-  html += "if (boat) {";
-  html += "   var pitch = imu.pitch;";
-  html += "   var roll = -imu.roll;";
-  
-  html += "   // If pitch is negative, adjust it by adding 360 degrees";
-  html += "   if (pitch < 0) {";
-  html += "      pitch += 360;";
-  html += "   }";
-  
-  html += "   boat.style.transform = 'translate(-50%, -50%) rotateY(' + roll + 'deg) rotateX(' + pitch + 'deg)';";
+  html += "var Zrot = 0;";
+  html += "if(imu.pitch < 0){";
+  html += "   Zrot = 180;";
+  html += "} else {";
+  html += "   Zrot = 0;";
   html += "}";
-  
+  html += "var boat = document.getElementById('boat');";
+  html += "if(boat){";
+  html += "   boat.style.transform = 'translate(-50%, -50%) ' + ' rotateX(' + imu.pitch + 'deg) rotateY(' + (-imu.roll) + 'deg) rotateZ(' + Zrot + 'deg)';";
+  html += "}";
 
   html += "    }";
   html += "  };";
@@ -236,7 +243,7 @@ void handleRoot()
     html += "<br><br>";
   }
   html += "<h2>LED Control</h2>";
-  html += "LED Brightness: <input type='range' min='0' max='255' value='" + String(ledBrightness) + "' oninput='updateLED(this.value)' />";
+  html += "LED Brightness: <input type='range' min='0' max='255' value='128' oninput='updateLED(this.value)' />";
   html += "<br><br>";
   html += "<h2>Remote Control</h2>";
   html += "RC Channel 1: <input type='range' id='rc1' min='1000' max='2000' value='1500' disabled /> <span id='rc1Val'>1500</span><br><br>";
@@ -245,6 +252,7 @@ void handleRoot()
   html += "<h2>IMU Data</h2>";
   html += "<p>Pitch: <span id='pitch'>0</span>&#176</p>";
   html += "<p>Roll: <span id='roll'>0</span>&#176</p>";
+  html += "<p>Heading: <span id='heading'>0</span>&#176</p>";
   html += "<p>Gyro: X: <span id='gyroX'>0</span> &#176/s, Y: <span id='gyroY'>0</span> &#176/s, Z: <span id='gyroZ'>0</span> &#176/s</p>";
   html += "<p>Accel: X: <span id='accelX'>0</span> m/s^2, Y: <span id='accelY'>0</span> m/s^2, Z: <span id='accelZ'>0</span> m/s^2</p>";
   html += "<p>Mag: X: <span id='magX'>0</span> uT, Y: <span id='magY'>0</span> uT, Z: <span id='magZ'>0</span> uT</p>";
