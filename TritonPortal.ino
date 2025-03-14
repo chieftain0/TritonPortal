@@ -231,7 +231,7 @@ void handleRoot()
   html += "<h2>LED Control</h2>";
   html += "LED Brightness: <input type='range' min='0' max='255' value='" + String(ledBrightness) + "' oninput='updateLED(this.value)' />";
   html += "<br><br>";
-  html += "<h2>RC Channel Outputs</h2>";
+  html += "<h2>Remote Control</h2>";
   html += "RC Channel 1: <input type='range' id='rc1' min='1000' max='2000' value='1500' disabled /> <span id='rc1Val'>1500</span><br><br>";
   html += "RC Channel 2: <input type='range' id='rc2' min='1000' max='2000' value='1500' disabled /> <span id='rc2Val'>1500</span><br><br>";
   html += "<div id='container'><div id='ball'></div></div>";
