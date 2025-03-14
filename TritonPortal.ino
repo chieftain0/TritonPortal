@@ -12,11 +12,12 @@ Servo ESC2;
 Servo ESC3;
 Servo ESC4;
 
-const int ch1 = 4, ch2 = 5;
-const int ledPin = 21;
-int ledBrightness = 128;
+const uint8_t ch1 = 13, ch2 = 12;
+const uint8_t SDA_pin = 4, SCL_pin = 5;
+const uint8_t ledPin = 21;
+uint8_t ledBrightness = 128;
 
-const int ESCPins[4] = {6, 7, 15, 16};
+const uint8_t ESCPins[4] = {6, 7, 15, 16};
 
 volatile unsigned long highTime1 = 1500, highTime2 = 1500;
 
