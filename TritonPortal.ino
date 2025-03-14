@@ -257,7 +257,7 @@ void handleData()
     highTime2 = 1000;
   else if (highTime2 > 2000)
     highTime2 = 2000;
-  String json = "{\"ch1\":" + String(highTime1) + ",\"ch2\":" + String(highTime1) + "}";
+  String json = "{\"ch1\":" + String(highTime1) + ",\"ch2\":" + String(highTime2) + "}";
   server.send(200, "application/json", json);
 }
 
