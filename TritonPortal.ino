@@ -93,6 +93,7 @@ void setup()
 
   server.on("/", handleRoot);
   server.on("/ESC", handleESC);
+  server.on("/imu", handleIMU);
   server.on("/data", handleData);
   server.on("/led", handleLed);
   server.on("/switch", handleSwitch);
@@ -132,29 +133,6 @@ void loop()
     ESC3.writeMicroseconds(highTime2);
     ESC4.writeMicroseconds(highTime2);
   }
-
-  // Print the values from IMU
-  Serial.println("HRP");
-  Serial.print("Pitch: " + String(hrpEulerData.p / 16.0) + "° ");
-  Serial.print("Roll: " + String(hrpEulerData.r / 16.0) + "° ");
-  Serial.println("Heading: " + String(hrpEulerData.h / 16.0) + "° ");
-
-  Serial.println("Gyro");
-  Serial.print("X: " + String(gyroData.x / 16.0) + " °/s ");
-  Serial.print("Y: " + String(gyroData.y / 16.0) + " °/s ");
-  Serial.println("Z: " + String(gyroData.z / 16.0) + " °/s ");
-
-  Serial.println("Accel");
-  Serial.print("X: " + String(accelData.x / 100.0) + " m/s^2 ");
-  Serial.print("Y: " + String(accelData.y / 100.0) + " m/s^2 ");
-  Serial.println("Z: " + String(accelData.z / 100.0) + " m/s^2 ");
-
-  Serial.println("Mag");
-  Serial.print("X: " + String(magData.x / 16.0) + " uT ");
-  Serial.print("Y: " + String(magData.y / 16.0) + " uT ");
-  Serial.println("Z: " + String(magData.z / 16.0) + " uT ");
-
-  SafeDelay(5000);
 }
 
 void handleRoot()
@@ -214,7 +192,30 @@ void handleRoot()
   html += "  };";
   html += "  xhr.send();";
   html += "}";
+  html += "function updateIMU(){";
+  html += "  var xhr_imu = new XMLHttpRequest();";
+  html += "  xhr_imu.open('GET', '/imu', true);";
+  html += "  xhr_imu.onreadystatechange = function(){";
+  html += "    if(xhr_imu.readyState == 4 && xhr_imu.status == 200){";
+  html += "      var imu = JSON.parse(xhr_imu.responseText);";
+  html += "      document.getElementById('pitch').innerHTML = imu.pitch;";
+  html += "      document.getElementById('roll').innerHTML = imu.roll;";
+  html += "      document.getElementById('heading').innerHTML = imu.heading;";
+  html += "      document.getElementById('gyroX').innerHTML = imu.gyroX;";
+  html += "      document.getElementById('gyroY').innerHTML = imu.gyroY;";
+  html += "      document.getElementById('gyroZ').innerHTML = imu.gyroZ;";
+  html += "      document.getElementById('accelX').innerHTML = imu.accelX;";
+  html += "      document.getElementById('accelY').innerHTML = imu.accelY;";
+  html += "      document.getElementById('accelZ').innerHTML = imu.accelZ;";
+  html += "      document.getElementById('magX').innerHTML = imu.magX;";
+  html += "      document.getElementById('magY').innerHTML = imu.magY;";
+  html += "      document.getElementById('magZ').innerHTML = imu.magZ;";
+  html += "    }";
+  html += "  };";
+  html += "  xhr_imu.send();";
+  html += "}";
   html += "setInterval(updateData, 150);";
+  html += "setInterval(updateIMU, 150);";
   html += "</script></head><body>";
   html += "<h1>Triton Portal</h1>";
   html += "<h2>ESC Control</h2>";
@@ -234,6 +235,13 @@ void handleRoot()
   html += "RC Channel 1: <input type='range' id='rc1' min='1000' max='2000' value='1500' disabled /> <span id='rc1Val'>1500</span><br><br>";
   html += "RC Channel 2: <input type='range' id='rc2' min='1000' max='2000' value='1500' disabled /> <span id='rc2Val'>1500</span><br><br>";
   html += "<div id='container'><div id='ball'></div></div>";
+  html += "<h2>IMU Data</h2>";
+  html += "<p>Pitch: <span id='pitch'>0</span>&#176</p>";
+  html += "<p>Roll: <span id='roll'>0</span>&#176</p>";
+  html += "<p>Heading: <span id='heading'>0</span>&#176</p>";
+  html += "<p>Gyro: X: <span id='gyroX'>0</span> &#176/s, Y: <span id='gyroY'>0</span> &#176/s, Z: <span id='gyroZ'>0</span> &#176/s</p>";
+  html += "<p>Accel: X: <span id='accelX'>0</span> m/s^2, Y: <span id='accelY'>0</span> m/s^2, Z: <span id='accelZ'>0</span> m/s^2</p>";
+  html += "<p>Mag: X: <span id='magX'>0</span> uT, Y: <span id='magY'>0</span> uT, Z: <span id='magZ'>0</span> uT</p>";
   html += "</body></html>";
 
   server.send(200, "text/html", html);
@@ -249,7 +257,26 @@ void handleData()
     highTime2 = 1000;
   else if (highTime2 > 2000)
     highTime2 = 2000;
-  String json = "{\"ch1\":" + String(highTime1) + ",\"ch2\":" + String(highTime2) + "}";
+  String json = "{\"ch1\":" + String(highTime1) + ",\"ch2\":" + String(highTime1) + "}";
+  server.send(200, "application/json", json);
+}
+
+void handleIMU()
+{
+  String json = "{";
+  json += "\"pitch\":" + String(int(hrpEulerData.p / 16.0)) + ",";
+  json += "\"roll\":" + String(int(hrpEulerData.r / 16.0)) + ",";
+  json += "\"heading\":" + String(int(hrpEulerData.h / 16.0)) + ",";
+  json += "\"gyroX\":" + String(gyroData.x / 16.0, 1) + ",";
+  json += "\"gyroY\":" + String(gyroData.y / 16.0, 1) + ",";
+  json += "\"gyroZ\":" + String(gyroData.z / 16.0, 1) + ",";
+  json += "\"accelX\":" + String(accelData.x / 100.0, 1) + ",";
+  json += "\"accelY\":" + String(accelData.y / 100.0, 1) + ",";
+  json += "\"accelZ\":" + String(accelData.z / 100.0, 1) + ",";
+  json += "\"magX\":" + String(magData.x / 16.0, 1) + ",";
+  json += "\"magY\":" + String(magData.y / 16.0, 1) + ",";
+  json += "\"magZ\":" + String(magData.z / 16.0, 1);
+  json += "}";
   server.send(200, "application/json", json);
 }
 
