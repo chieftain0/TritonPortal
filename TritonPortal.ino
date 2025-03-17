@@ -5,6 +5,8 @@
 #include <ESP32Servo.h>
 #include <WebServer.h>
 
+#include <ArduinoJson.h>
+
 // WiFi configuration
 const char *ssid = "TritonPortal";
 const char *password = "";
@@ -34,6 +36,7 @@ const uint8_t SDA_pin = 4, SCL_pin = 5;
 // Global variables
 volatile unsigned long highTime1 = 1500, highTime2 = 1500;
 volatile bool manualMode = false;
+JsonDocument response;
 
 void onTimer(TimerHandle_t xTimer)
 {
@@ -125,6 +128,35 @@ void loop()
     ESC2.writeMicroseconds(highTime1);
     ESC3.writeMicroseconds(highTime2);
     ESC4.writeMicroseconds(highTime2);
+  }
+  if (Serial.available() > 0)
+  {
+    String command = Serial.readStringUntil('\n');
+    if (command == "GET_IMU")
+    {
+      JsonObject IMU = response["IMU"].to<JsonObject>();
+      IMU["pitch"] = hrpEulerData.p / 16.0;
+      IMU["roll"] = hrpEulerData.r / 16.0;
+      IMU["heading"] = hrpEulerData.h / 16.0;
+      IMU["accel_x"] = accelData.x / 100.0;
+      IMU["accel_y"] = accelData.y / 100.0;
+      IMU["accel_z"] = accelData.z / 100.0;
+      IMU["gyro_x"] = gyroData.x / 16.0;
+      IMU["gyro_y"] = gyroData.y / 16.0;
+      IMU["gyro_z"] = gyroData.z / 16.0;
+      IMU["mag_x"] = magData.x / 16.0;
+      IMU["mag_y"] = magData.y / 16.0;
+      IMU["mag_z"] = magData.z / 16.0;
+
+      response.shrinkToFit();
+
+      serializeJson(response, Serial);
+      Serial.print("\n");
+    }
+    else
+    {
+      Serial.print("UNKNOWN COMMAND\n");
+    }
   }
 }
 
@@ -253,13 +285,21 @@ void handleRoot()
 void handleData()
 {
   if (highTime1 < 1000)
+  {
     highTime1 = 1000;
+  }
   else if (highTime1 > 2000)
+  {
     highTime1 = 2000;
+  }
   if (highTime2 < 1000)
+  {
     highTime2 = 1000;
+  }
   else if (highTime2 > 2000)
+  {
     highTime2 = 2000;
+  }
   String json = "{\"ch1\":" + String(highTime1) + ",\"ch2\":" + String(highTime2) + "}";
   server.send(200, "application/json", json);
 }
