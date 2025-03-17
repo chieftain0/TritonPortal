@@ -75,9 +75,6 @@ void setup()
   Serial.begin(115200);
   SafeDelay(100); // Small delay for i2c init
 
-  WiFi.softAP(ssid, password);
-  Serial.println(WiFi.softAPIP());
-
   ESC1.attach(ESCPins[0]);
   ESC2.attach(ESCPins[1]);
   ESC3.attach(ESCPins[2]);
@@ -116,6 +113,7 @@ void setup()
 
 void webServerTask(void *pvParameters)
 {
+  WiFi.softAP(ssid, password);
   server.begin();
   while (true)
   {
