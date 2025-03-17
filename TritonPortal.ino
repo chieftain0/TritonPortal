@@ -129,10 +129,11 @@ void loop()
     ESC3.writeMicroseconds(highTime2);
     ESC4.writeMicroseconds(highTime2);
   }
-  if (Serial.available() > 0)
+  if (Serial.available() > 0 && Serial.available() < 32)
   {
-    String command = Serial.readStringUntil('\n');
-    if (command == "GET_IMU")
+    char command[32] = {0};
+    Serial.readBytesUntil('\n', command, 32);
+    if (strcmp(command, "GET_IMU") == 0)
     {
       JsonObject IMU = response["IMU"].to<JsonObject>();
       IMU["pitch"] = hrpEulerData.p / 16.0;
