@@ -30,10 +30,8 @@ Servo ESC4;
 const uint8_t ESCPins[4] = {6, 7, 15, 16};
 const uint8_t ch1 = 13, ch2 = 12;
 const uint8_t SDA_pin = 4, SCL_pin = 5;
-const uint8_t ledPin = 21;
 
 // Global variables
-uint8_t ledBrightness = 128;
 volatile unsigned long highTime1 = 1500, highTime2 = 1500;
 volatile bool manualMode = false;
 
@@ -83,8 +81,6 @@ void setup()
   pinMode(ch1, INPUT);
   pinMode(ch2, INPUT);
 
-  ledcAttach(ledPin, 5000, 8);
-
   attachInterrupt(digitalPinToInterrupt(ch1), pulseCh1, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ch2), pulseCh2, CHANGE);
 
@@ -92,7 +88,6 @@ void setup()
   server.on("/ESC", handleESC);
   server.on("/imu", handleIMU);
   server.on("/data", handleData);
-  server.on("/led", handleLed);
   server.on("/switch", handleSwitch);
 
   xTaskCreatePinnedToCore(
@@ -150,10 +145,6 @@ void handleRoot()
   html += "  xhr.open('GET', '/ESC?ESC=' + ESC + '&value=' + value, true);";
   html += "  xhr.send();";
   html += "}";
-  html += "function updateLED(value){";
-  html += "  xhr.open('GET', '/led?value=' + value, true);";
-  html += "  xhr.send();";
-  html += "}";
   html += "function updateSwitch(checked){";
   html += "  var state = checked ? 'on' : 'off';";
   html += "  xhr.open('GET', '/switch?state=' + state, true);";
@@ -209,7 +200,6 @@ void handleRoot()
   html += "      document.getElementById('magX').innerHTML = imu.magX;";
   html += "      document.getElementById('magY').innerHTML = imu.magY;";
   html += "      document.getElementById('magZ').innerHTML = imu.magZ;";
-
   html += "var Zrot = 0;";
   html += "if(imu.pitch < 0){";
   html += "   Zrot = 180;";
@@ -220,7 +210,6 @@ void handleRoot()
   html += "if(boat){";
   html += "   boat.style.transform = 'translate(-50%, -50%) ' + ' rotateX(' + imu.pitch + 'deg) rotateY(' + (-imu.roll) + 'deg) rotateZ(' + Zrot + 'deg)';";
   html += "}";
-
   html += "    }";
   html += "  };";
   html += "  xhr_imu.send();";
@@ -240,9 +229,6 @@ void handleRoot()
     html += "<input type='range' class='escSlider' id='esc" + String(i) + "' min='1000' max='2000' value='1500' disabled oninput='updateESC(" + String(i) + ", this.value)' />";
     html += "<br><br>";
   }
-  html += "<h2>LED Control</h2>";
-  html += "LED Brightness: <input type='range' min='0' max='255' value='128' oninput='updateLED(this.value)' />";
-  html += "<br><br>";
   html += "<h2>Remote Control</h2>";
   html += "RC Channel 1: <input type='range' id='rc1' min='1000' max='2000' value='1500' disabled /> <span id='rc1Val'>1500</span><br><br>";
   html += "RC Channel 2: <input type='range' id='rc2' min='1000' max='2000' value='1500' disabled /> <span id='rc2Val'>1500</span><br><br>";
@@ -329,18 +315,6 @@ void handleESC()
     server.send(400, "text/plain", "Invalid ESC number");
     return;
   }
-  server.send(200, "text/plain", "OK");
-}
-
-void handleLed()
-{
-  if (!server.hasArg("value"))
-  {
-    server.send(400, "text/plain", "Bad Request");
-    return;
-  }
-  ledBrightness = server.arg("value").toInt();
-  ledcWrite(ledPin, ledBrightness);
   server.send(200, "text/plain", "OK");
 }
 
