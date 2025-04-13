@@ -35,7 +35,8 @@ const uint8_t SDA_pin = 4, SCL_pin = 5;
 
 // Global variables
 volatile unsigned long highTime1 = 1500, highTime2 = 1500;
-volatile bool manualMode = false;
+volatile unsigned long thrust, right, left = 0;
+volatile bool RCmode = false;
 JsonDocument response;
 
 void onTimer(TimerHandle_t xTimer)
@@ -87,11 +88,14 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(ch1), pulseCh1, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ch2), pulseCh2, CHANGE);
 
+  BNO_Init(&BNO);
+  bno055_set_operation_mode(OPERATION_MODE_NDOF);
+  rtosTimer = xTimerCreate("RTOS_Timer", pdMS_TO_TICKS(100), pdTRUE, NULL, onTimer);
+  xTimerStart(rtosTimer, 0);
+
   server.on("/", handleRoot);
-  server.on("/ESC", handleESC);
   server.on("/imu", handleIMU);
   server.on("/data", handleData);
-  server.on("/switch", handleSwitch);
 
   xTaskCreatePinnedToCore(
       webServerTask,   // Task function
@@ -102,11 +106,6 @@ void setup()
       NULL,            // Task handle
       0                // Core 0
   );
-
-  BNO_Init(&BNO);
-  bno055_set_operation_mode(OPERATION_MODE_NDOF);
-  rtosTimer = xTimerCreate("RTOS_Timer", pdMS_TO_TICKS(100), pdTRUE, NULL, onTimer);
-  xTimerStart(rtosTimer, 0);
 }
 
 void webServerTask(void *pvParameters)
@@ -116,13 +115,14 @@ void webServerTask(void *pvParameters)
   while (true)
   {
     server.handleClient();
-    vTaskDelay(1);
+    vTaskDelay(10);
   }
 }
 
 void loop()
 {
-  if (!manualMode)
+  Serial.println(RCmode);
+  if (!RCmode)
   {
     ESC1.writeMicroseconds(highTime1);
     ESC2.writeMicroseconds(highTime1);
@@ -178,19 +178,6 @@ void handleRoot()
     </style>
     <script>
     var xhr = new XMLHttpRequest();
-    function updateESC(ESC, value){
-      xhr.open('GET', '/ESC?ESC=' + ESC + '&value=' + value, true);
-      xhr.send();
-    }
-    function updateSwitch(checked){
-      var state = checked ? 'on' : 'off';
-      xhr.open('GET', '/switch?state=' + state, true);
-      xhr.send();
-      var sliders = document.getElementsByClassName('escSlider');
-      for(var i = 0; i < sliders.length; i++) {
-        sliders[i].disabled = !checked;
-      }
-    }
     function updateData(){
       xhr.open('GET', '/data', true);
       xhr.onreadystatechange = function(){
@@ -209,12 +196,6 @@ void handleRoot()
           var y = yInput * radius + 150 - 10;
           document.getElementById('ball').style.left = x + 'px';
           document.getElementById('ball').style.top = y + 'px';
-          if(!document.getElementById('manualControl').checked){
-             document.getElementById('esc1').value = data.ch1;
-             document.getElementById('esc2').value = data.ch1;
-             document.getElementById('esc3').value = data.ch2;
-             document.getElementById('esc4').value = data.ch2;
-          }
         }
       };
       xhr.send();
@@ -257,14 +238,6 @@ void handleRoot()
     </head>
     <body>
     <h1>Triton Portal</h1>
-    <h2>ESC Control</h2>
-    <label for='manualControl'>Manual Control: </label>
-    <input type='checkbox' id='manualControl' onchange='updateSwitch(this.checked)' />
-    <br><br>
-    ESC 1: <input type='range' class='escSlider' id='esc1' min='1000' max='2000' value='1500' disabled oninput='updateESC(1, this.value)' /><br><br>
-    ESC 2: <input type='range' class='escSlider' id='esc2' min='1000' max='2000' value='1500' disabled oninput='updateESC(2, this.value)' /><br><br>
-    ESC 3: <input type='range' class='escSlider' id='esc3' min='1000' max='2000' value='1500' disabled oninput='updateESC(3, this.value)' /><br><br>
-    ESC 4: <input type='range' class='escSlider' id='esc4' min='1000' max='2000' value='1500' disabled oninput='updateESC(4, this.value)' /><br><br>
     <h2>Remote Control</h2>
     RC Channel 1: <input type='range' id='rc1' min='1000' max='2000' value='1500' disabled /> <span id='rc1Val'>1500</span><br><br>
     RC Channel 2: <input type='range' id='rc2' min='1000' max='2000' value='1500' disabled /> <span id='rc2Val'>1500</span><br><br>
@@ -306,103 +279,45 @@ void handleData()
   {
     highTime2 = 2000;
   }
-  char json[64];
-  sprintf(json, "{\"ch1\":%d,\"ch2\":%d}", highTime1, highTime2);
-  server.send(200, "application/json", json);
+  char jsonResponse[64] = "";
+  snprintf(jsonResponse, sizeof(jsonResponse) / sizeof(char), "{\"ch1\":%d,\"ch2\":%d}", highTime1, highTime2);
+  server.send(200, "application/json", jsonResponse);
 }
 
 void handleIMU()
 {
-  char json[512];
+  char jsonResponse[512] = "";
 
-  sprintf(json,
-          "{"
-          "\"pitch\":%d,"
-          "\"roll\":%d,"
-          "\"heading\":%d,"
-          "\"gyroX\":%.1f,"
-          "\"gyroY\":%.1f,"
-          "\"gyroZ\":%.1f,"
-          "\"accelX\":%.1f,"
-          "\"accelY\":%.1f,"
-          "\"accelZ\":%.1f,"
-          "\"magX\":%.1f,"
-          "\"magY\":%.1f,"
-          "\"magZ\":%.1f"
-          "}",
-          int(hrpEulerData.p / 16.0),
-          int(hrpEulerData.r / 16.0),
-          int(hrpEulerData.h / 16.0),
-          gyroData.x / 16.0,
-          gyroData.y / 16.0,
-          gyroData.z / 16.0,
-          accelData.x / 100.0,
-          accelData.y / 100.0,
-          accelData.z / 100.0,
-          magData.x / 16.0,
-          magData.y / 16.0,
-          magData.z / 16.0);
+  snprintf(jsonResponse,
+           sizeof(jsonResponse) / sizeof(char),
+           "{"
+           "\"pitch\":%d,"
+           "\"roll\":%d,"
+           "\"heading\":%d,"
+           "\"gyroX\":%.1f,"
+           "\"gyroY\":%.1f,"
+           "\"gyroZ\":%.1f,"
+           "\"accelX\":%.1f,"
+           "\"accelY\":%.1f,"
+           "\"accelZ\":%.1f,"
+           "\"magX\":%.1f,"
+           "\"magY\":%.1f,"
+           "\"magZ\":%.1f"
+           "}",
+           int(hrpEulerData.p / 16.0),
+           int(hrpEulerData.r / 16.0),
+           int(hrpEulerData.h / 16.0),
+           gyroData.x / 16.0,
+           gyroData.y / 16.0,
+           gyroData.z / 16.0,
+           accelData.x / 100.0,
+           accelData.y / 100.0,
+           accelData.z / 100.0,
+           magData.x / 16.0,
+           magData.y / 16.0,
+           magData.z / 16.0);
 
-  server.send(200, "application/json", json);
-}
-
-void handleESC()
-{
-  if (!server.hasArg("ESC") || !server.hasArg("value"))
-  {
-    server.send(400, "text/plain", "Bad Request");
-    return;
-  }
-  int ESCNum = server.arg("ESC").toInt();
-  int ESCValue = server.arg("value").toInt();
-  if (ESCValue < 1000 || ESCValue > 2000)
-  {
-    server.send(400, "text/plain", "Value out of range");
-    return;
-  }
-  switch (ESCNum)
-  {
-  case 1:
-    ESC1.writeMicroseconds(ESCValue);
-    break;
-  case 2:
-    ESC2.writeMicroseconds(ESCValue);
-    break;
-  case 3:
-    ESC3.writeMicroseconds(ESCValue);
-    break;
-  case 4:
-    ESC4.writeMicroseconds(ESCValue);
-    break;
-  default:
-    server.send(400, "text/plain", "Invalid ESC number");
-    return;
-  }
-  server.send(200, "text/plain", "OK");
-}
-
-void handleSwitch()
-{
-  if (!server.hasArg("state"))
-  {
-    server.send(400, "text/plain", "Bad Request");
-    return;
-  }
-  const char *state = server.arg("state").c_str();
-  if (strcmp(state, "off") == 0)
-  {
-    manualMode = false;
-  }
-  else if (strcmp(state, "on") == 0)
-  {
-    manualMode = true;
-  }
-  else
-  {
-    server.send(400, "text/plain", "Invalid state");
-    return;
-  }
-  server.send(200, "text/plain", "OK");
+  server.send(200, "application/json", jsonResponse);
 }
 
 void SafeDelay(unsigned long ms)
