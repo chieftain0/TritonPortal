@@ -74,7 +74,6 @@ void setup()
 {
   Wire.begin(SDA_pin, SCL_pin);
   Serial.begin(115200);
-  SafeDelay(100); // Small delay for i2c init
 
   ESC1.attach(ESCPins[0]);
   ESC2.attach(ESCPins[1]);
