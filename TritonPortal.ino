@@ -35,7 +35,6 @@ const uint8_t SDA_pin = 4, SCL_pin = 5;
 
 // Global variables
 volatile unsigned long highTime1 = 1500, highTime2 = 1500;
-volatile unsigned long thrust, right, left = 0;
 volatile bool RCmode = false;
 JsonDocument response;
 
@@ -124,10 +123,10 @@ void loop()
   Serial.println(RCmode);
   if (!RCmode)
   {
-    ESC1.writeMicroseconds(highTime1);
-    ESC2.writeMicroseconds(highTime1);
-    ESC3.writeMicroseconds(highTime2);
-    ESC4.writeMicroseconds(highTime2);
+    ESC1.writeMicroseconds(constrain(highTime1 + (highTime2 - 1500), 1000, 2000));
+    ESC2.writeMicroseconds(constrain(highTime1 - (highTime2 - 1500), 1000, 2000));
+    ESC3.writeMicroseconds(constrain(highTime1 + (highTime2 - 1500), 1000, 2000));
+    ESC4.writeMicroseconds(constrain(highTime1 - (highTime2 - 1500), 1000, 2000));
   }
   if (Serial.available() > 0 && Serial.available() < 32)
   {
@@ -263,24 +262,8 @@ void handleRoot()
 
 void handleData()
 {
-  if (highTime1 < 1000)
-  {
-    highTime1 = 1000;
-  }
-  else if (highTime1 > 2000)
-  {
-    highTime1 = 2000;
-  }
-  if (highTime2 < 1000)
-  {
-    highTime2 = 1000;
-  }
-  else if (highTime2 > 2000)
-  {
-    highTime2 = 2000;
-  }
   char jsonResponse[64] = "";
-  snprintf(jsonResponse, sizeof(jsonResponse) / sizeof(char), "{\"ch1\":%d,\"ch2\":%d}", highTime1, highTime2);
+  snprintf(jsonResponse, sizeof(jsonResponse) / sizeof(char), "{\"ch1\":%d,\"ch2\":%d}", constrain(highTime1, 1000, 2000), constrain(highTime2, 1000, 2000));
   server.send(200, "application/json", jsonResponse);
 }
 
