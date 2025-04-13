@@ -38,7 +38,7 @@ volatile unsigned long highTime1 = 1500, highTime2 = 1500;
 volatile bool RCmode = false;
 JsonDocument response;
 
-void onTimer(TimerHandle_t xTimer)
+void readIMU(TimerHandle_t xTimer)
 {
   bno055_read_euler_hrp(&hrpEulerData); // divide by 16 for °
   bno055_read_gyro_xyz(&gyroData);      // divide by 16 for °/s
@@ -54,7 +54,7 @@ void IRAM_ATTR pulseCh1()
   }
   else
   {
-    highTime1 = micros() - startTime;
+    highTime1 = micros() - startTime + 35; // small offset
   }
 }
 void IRAM_ATTR pulseCh2()
@@ -66,7 +66,7 @@ void IRAM_ATTR pulseCh2()
   }
   else
   {
-    highTime2 = micros() - startTime;
+    highTime2 = micros() - startTime + 35; // small offset
   }
 }
 
@@ -89,7 +89,7 @@ void setup()
 
   BNO_Init(&BNO);
   bno055_set_operation_mode(OPERATION_MODE_NDOF);
-  rtosTimer = xTimerCreate("RTOS_Timer", pdMS_TO_TICKS(100), pdTRUE, NULL, onTimer);
+  rtosTimer = xTimerCreate("RTOS_Timer", pdMS_TO_TICKS(100), pdTRUE, NULL, readIMU);
   xTimerStart(rtosTimer, 0);
 
   server.on("/", handleRoot);
