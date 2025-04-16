@@ -30,7 +30,7 @@ Servo ESC4;
 
 // GPIO pin definitions
 const uint8_t ESCPins[4] = {6, 7, 15, 16};
-int ESCvalues[4] = {1500, 1500, 1500, 1500};
+volatile int ESCvalues[4] = {1500, 1500, 1500, 1500};
 const uint8_t ch1 = 13, ch2 = 12;
 const uint8_t SDA_pin = 4, SCL_pin = 5;
 
@@ -74,30 +74,35 @@ void IRAM_ATTR pulseCh2()
 
 void setup()
 {
-  Wire.begin(SDA_pin, SCL_pin);
+  // Start serial communication
   Serial.begin(115200);
 
+  // Start I2C communication
+  Wire.begin(SDA_pin, SCL_pin);
+
+  // Setup ESCs
   ESC1.attach(ESCPins[0]);
   ESC2.attach(ESCPins[1]);
   ESC3.attach(ESCPins[2]);
   ESC4.attach(ESCPins[3]);
 
+  // Setup RC inputs
   pinMode(ch1, INPUT);
   pinMode(ch2, INPUT);
-
   attachInterrupt(digitalPinToInterrupt(ch1), pulseCh1, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ch2), pulseCh2, CHANGE);
 
+  // Setup IMU and routines
   BNO_Init(&BNO);
   bno055_set_operation_mode(OPERATION_MODE_NDOF);
   rtosTimer = xTimerCreate("RTOS_Timer", pdMS_TO_TICKS(100), pdTRUE, NULL, readIMU);
   xTimerStart(rtosTimer, 0);
 
+  // Setup web server and RTOS
   server.on("/", handleRoot);
   server.on("/imu", handleIMU);
   server.on("/rc", handleRC);
   server.on("/esc", handleESC);
-
   xTaskCreatePinnedToCore(
       webServerTask,   // Task function
       "WebServerTask", // Task name
@@ -111,12 +116,12 @@ void setup()
 
 void webServerTask(void *pvParameters)
 {
-  WiFi.softAP(ssid, password);
-  server.begin();
+  WiFi.softAP(ssid, password); // Start WiFi
+  server.begin();              // Start server
   while (true)
   {
-    server.handleClient();
-    vTaskDelay(10);
+    server.handleClient(); // Handle HTTP requests
+    vTaskDelay(10);        // Allow other tasks (if any)
   }
 }
 
@@ -181,26 +186,9 @@ void loop()
       }
     }
 
-    if (jsonCommand["GET_IMU"])
+    if (jsonCommand["GET_IMU"]) // Respond with IMU data
     {
-      JsonObject IMU = response["IMU"].to<JsonObject>();
-      IMU["pitch"] = hrpEulerData.p / 16.0;
-      IMU["roll"] = hrpEulerData.r / 16.0;
-      IMU["heading"] = hrpEulerData.h / 16.0;
-      IMU["accel_x"] = accelData.x / 100.0;
-      IMU["accel_y"] = accelData.y / 100.0;
-      IMU["accel_z"] = accelData.z / 100.0;
-      IMU["gyro_x"] = gyroData.x / 16.0;
-      IMU["gyro_y"] = gyroData.y / 16.0;
-      IMU["gyro_z"] = gyroData.z / 16.0;
-      IMU["mag_x"] = magData.x / 16.0;
-      IMU["mag_y"] = magData.y / 16.0;
-      IMU["mag_z"] = magData.z / 16.0;
-
-      response.shrinkToFit();
-
-      serializeJson(response, Serial);
-      Serial.print("\r\n");
+      RespondWithIMU();
     }
   }
 
@@ -441,5 +429,30 @@ void SafeDelay(unsigned long ms)
   while (millis() - start < ms)
   {
     yield();
+  }
+}
+
+void RespondWithIMU()
+{
+  if (Serial)
+  {
+    JsonObject IMU = response["IMU"].to<JsonObject>();
+    IMU["pitch"] = hrpEulerData.p / 16.0;
+    IMU["roll"] = hrpEulerData.r / 16.0;
+    IMU["heading"] = hrpEulerData.h / 16.0;
+    IMU["accel_x"] = accelData.x / 100.0;
+    IMU["accel_y"] = accelData.y / 100.0;
+    IMU["accel_z"] = accelData.z / 100.0;
+    IMU["gyro_x"] = gyroData.x / 16.0;
+    IMU["gyro_y"] = gyroData.y / 16.0;
+    IMU["gyro_z"] = gyroData.z / 16.0;
+    IMU["mag_x"] = magData.x / 16.0;
+    IMU["mag_y"] = magData.y / 16.0;
+    IMU["mag_z"] = magData.z / 16.0;
+
+    response.shrinkToFit();
+
+    serializeJson(response, Serial);
+    Serial.print("\r\n");
   }
 }
