@@ -34,6 +34,7 @@ const uint8_t ch1 = 13, ch2 = 12;
 const uint8_t SDA_pin = 4, SCL_pin = 5;
 
 // Global variables
+#define BUFFER_SIZE 1024
 volatile unsigned long highTime1 = 1500, highTime2 = 1500;
 volatile bool RCmode = false;
 JsonDocument response;
@@ -93,7 +94,7 @@ void setup()
 
   server.on("/", handleRoot);
   server.on("/imu", handleIMU);
-  server.on("/data", handleData);
+  server.on("/rc", handleRC);
 
   xTaskCreatePinnedToCore(
       webServerTask,   // Task function
@@ -119,19 +120,67 @@ void webServerTask(void *pvParameters)
 
 void loop()
 {
-  Serial.println(RCmode);
-  if (!RCmode)
+  if (RCmode)
   {
     ESC1.writeMicroseconds(constrain(highTime1 + (highTime2 - 1500), 1000, 2000));
     ESC2.writeMicroseconds(constrain(highTime1 - (highTime2 - 1500), 1000, 2000));
     ESC3.writeMicroseconds(constrain(highTime1 + (highTime2 - 1500), 1000, 2000));
     ESC4.writeMicroseconds(constrain(highTime1 - (highTime2 - 1500), 1000, 2000));
   }
-  if (Serial.available() > 0 && Serial.available() < 32)
+  if (Serial.available() > 0)
   {
-    char command[32] = {0};
-    Serial.readBytesUntil('\n', command, 32);
-    if (strcmp(command, "GET_IMU") == 0)
+    JsonDocument jsonCommand;
+    char command[BUFFER_SIZE] = {0};
+    Serial.readBytesUntil('\n', command, BUFFER_SIZE);
+
+    DeserializationError jsonError = deserializeJson(jsonCommand, command, BUFFER_SIZE);
+
+    if (jsonError)
+    {
+      Serial.print("UNKNOWN_COMMAND\r\n");
+      Serial.println(jsonError.c_str());
+      return;
+    }
+
+    RCmode = bool(jsonCommand["SET_RC_MODE"]);
+    if (!RCmode)
+    {
+
+      if (jsonCommand["ESC1"] >= 1000 && jsonCommand["ESC1"] <= 2000)
+      {
+        ESC1.writeMicroseconds(jsonCommand["ESC1"]);
+      }
+      else
+      {
+        Serial.print("ESC1_VALUE_ERROR\r\n");
+      }
+      if (jsonCommand["ESC2"] >= 1000 && jsonCommand["ESC2"] <= 2000)
+      {
+        ESC2.writeMicroseconds(jsonCommand["ESC2"]);
+      }
+      else
+      {
+        Serial.print("ESC2_VALUE_ERROR\r\n");
+      }
+      if (jsonCommand["ESC3"] >= 1000 && jsonCommand["ESC3"] <= 2000)
+      {
+        ESC3.writeMicroseconds(jsonCommand["ESC3"]);
+      }
+      else
+      {
+        Serial.print("ESC3_VALUE_ERROR\r\n");
+      }
+      if (jsonCommand["ESC4"] >= 1000 && jsonCommand["ESC4"] <= 2000)
+      {
+        ESC4.writeMicroseconds(jsonCommand["ESC4"]);
+      }
+      else
+      {
+        Serial.print("ESC4_VALUE_ERROR\r\n");
+      }
+    }
+
+    if (jsonCommand["GET_IMU"])
     {
       JsonObject IMU = response["IMU"].to<JsonObject>();
       IMU["pitch"] = hrpEulerData.p / 16.0;
@@ -150,11 +199,7 @@ void loop()
       response.shrinkToFit();
 
       serializeJson(response, Serial);
-      Serial.print("\n");
-    }
-    else
-    {
-      Serial.print("UNKNOWN COMMAND\n");
+      Serial.print("\r\n");
     }
   }
 }
@@ -177,7 +222,7 @@ void handleRoot()
     <script>
     var xhr = new XMLHttpRequest();
     function updateData(){
-      xhr.open('GET', '/data', true);
+      xhr.open('GET', '/rc', true);
       xhr.onreadystatechange = function(){
         if(xhr.readyState == 4 && xhr.status == 200){
           var data = JSON.parse(xhr.responseText);
@@ -259,7 +304,7 @@ void handleRoot()
   server.send(200, "text/html", html);
 }
 
-void handleData()
+void handleRC()
 {
   char jsonResponse[64] = "";
   snprintf(jsonResponse, sizeof(jsonResponse) / sizeof(char), "{\"ch1\":%d,\"ch2\":%d}", constrain(highTime1, 1000, 2000), constrain(highTime2, 1000, 2000));
