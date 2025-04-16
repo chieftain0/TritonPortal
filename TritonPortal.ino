@@ -30,6 +30,7 @@ Servo ESC4;
 
 // GPIO pin definitions
 const uint8_t ESCPins[4] = {6, 7, 15, 16};
+int ESCvalues[4] = {1500, 1500, 1500, 1500};
 const uint8_t ch1 = 13, ch2 = 12;
 const uint8_t SDA_pin = 4, SCL_pin = 5;
 
@@ -95,6 +96,7 @@ void setup()
   server.on("/", handleRoot);
   server.on("/imu", handleIMU);
   server.on("/rc", handleRC);
+  server.on("/esc", handleESC);
 
   xTaskCreatePinnedToCore(
       webServerTask,   // Task function
@@ -122,10 +124,10 @@ void loop()
 {
   if (RCmode)
   {
-    ESC1.writeMicroseconds(constrain(highTime1 + (highTime2 - 1500), 1000, 2000));
-    ESC2.writeMicroseconds(constrain(highTime1 - (highTime2 - 1500), 1000, 2000));
-    ESC3.writeMicroseconds(constrain(highTime1 + (highTime2 - 1500), 1000, 2000));
-    ESC4.writeMicroseconds(constrain(highTime1 - (highTime2 - 1500), 1000, 2000));
+    ESCvalues[0] = constrain(highTime2 + (highTime1 - 1500), 1000, 2000);
+    ESCvalues[1] = constrain(highTime2 - (highTime1 - 1500), 1000, 2000);
+    ESCvalues[2] = constrain(highTime2 + (highTime1 - 1500), 1000, 2000);
+    ESCvalues[3] = constrain(highTime2 - (highTime1 - 1500), 1000, 2000);
   }
   if (Serial.available() > 0)
   {
@@ -145,10 +147,9 @@ void loop()
     RCmode = bool(jsonCommand["SET_RC_MODE"]);
     if (!RCmode)
     {
-
       if (jsonCommand["ESC1"] >= 1000 && jsonCommand["ESC1"] <= 2000)
       {
-        ESC1.writeMicroseconds(jsonCommand["ESC1"]);
+        ESCvalues[0] = jsonCommand["ESC1"];
       }
       else
       {
@@ -156,7 +157,7 @@ void loop()
       }
       if (jsonCommand["ESC2"] >= 1000 && jsonCommand["ESC2"] <= 2000)
       {
-        ESC2.writeMicroseconds(jsonCommand["ESC2"]);
+        ESCvalues[1] = jsonCommand["ESC2"];
       }
       else
       {
@@ -164,7 +165,7 @@ void loop()
       }
       if (jsonCommand["ESC3"] >= 1000 && jsonCommand["ESC3"] <= 2000)
       {
-        ESC3.writeMicroseconds(jsonCommand["ESC3"]);
+        ESCvalues[2] = jsonCommand["ESC3"];
       }
       else
       {
@@ -172,7 +173,7 @@ void loop()
       }
       if (jsonCommand["ESC4"] >= 1000 && jsonCommand["ESC4"] <= 2000)
       {
-        ESC4.writeMicroseconds(jsonCommand["ESC4"]);
+        ESCvalues[3] = jsonCommand["ESC4"];
       }
       else
       {
@@ -202,104 +203,183 @@ void loop()
       Serial.print("\r\n");
     }
   }
+
+  ESC1.writeMicroseconds(ESCvalues[0]);
+  ESC2.writeMicroseconds(ESCvalues[1]);
+  ESC3.writeMicroseconds(ESCvalues[2]);
+  ESC4.writeMicroseconds(ESCvalues[3]);
 }
 
 void handleRoot()
 {
   const char *html = R"rawliteral(
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <title>Triton Portal</title>
-    <style>
-    body { text-align: center; font-family: Arial, sans-serif; }
-    #container { position: relative; width: 300px; height: 300px; border-radius: 50%; border: 2px solid black; margin: auto; }
-    #ball { position: absolute; width: 20px; height: 20px; background: red; border-radius: 50%; }
-    #boatContainer { width: 300px; height: 300px; margin: auto; position: relative; perspective: 800px; border: 1px solid #ccc; }
-    #boat { position: absolute; top: 50%; left: 50%; width: 150px; height: 150px; transform: translate(-50%, -50%); transform-origin: center; }
-    </style>
-    <script>
-    var xhr = new XMLHttpRequest();
-    function updateData(){
-      xhr.open('GET', '/rc', true);
-      xhr.onreadystatechange = function(){
-        if(xhr.readyState == 4 && xhr.status == 200){
-          var data = JSON.parse(xhr.responseText);
-          document.getElementById('rc1').value = data.ch1;
-          document.getElementById('rc2').value = data.ch2;
-          document.getElementById('rc1Val').innerHTML = data.ch1;
-          document.getElementById('rc2Val').innerHTML = data.ch2;
-          var xInput = (data.ch1 - 1500) / 500;
-          var yInput = -1 * (data.ch2 - 1500) / 500;
-          var magnitude = Math.sqrt(xInput*xInput + yInput*yInput);
-          if(magnitude > 1){ xInput /= magnitude; yInput /= magnitude; }
-          var radius = 140;
-          var x = xInput * radius + 150 - 10;
-          var y = yInput * radius + 150 - 10;
-          document.getElementById('ball').style.left = x + 'px';
-          document.getElementById('ball').style.top = y + 'px';
-        }
-      };
-      xhr.send();
-    }
-    function updateIMU(){
-      var xhr_imu = new XMLHttpRequest();
-      xhr_imu.open('GET', '/imu', true);
-      xhr_imu.onreadystatechange = function(){
-        if(xhr_imu.readyState == 4 && xhr_imu.status == 200){
-          var imu = JSON.parse(xhr_imu.responseText);
-          document.getElementById('pitch').innerHTML = imu.pitch;
-          document.getElementById('roll').innerHTML = imu.roll;
-          document.getElementById('heading').innerHTML = imu.heading;
-          document.getElementById('gyroX').innerHTML = imu.gyroX;
-          document.getElementById('gyroY').innerHTML = imu.gyroY;
-          document.getElementById('gyroZ').innerHTML = imu.gyroZ;
-          document.getElementById('accelX').innerHTML = imu.accelX;
-          document.getElementById('accelY').innerHTML = imu.accelY;
-          document.getElementById('accelZ').innerHTML = imu.accelZ;
-          document.getElementById('magX').innerHTML = imu.magX;
-          document.getElementById('magY').innerHTML = imu.magY;
-          document.getElementById('magZ').innerHTML = imu.magZ;
-    var Zrot = 0;
-    if(imu.pitch < 0){
-       Zrot = 180;
-    } else {
-       Zrot = 0;
-    }
-    var boat = document.getElementById('boat');
-    if(boat){
-       boat.style.transform = 'translate(-50%, -50%) ' + ' rotateX(' + imu.pitch + 'deg) rotateY(' + (-imu.roll) + 'deg) rotateZ(' + Zrot + 'deg)';
-    }
-        }
-      };
-      xhr_imu.send();
-    }
-    setInterval(updateData, 150);
-    setInterval(updateIMU, 150);
-    </script>
-    </head>
-    <body>
-    <h1>Triton Portal</h1>
-    <h2>Remote Control</h2>
-    RC Channel 1: <input type='range' id='rc1' min='1000' max='2000' value='1500' disabled /> <span id='rc1Val'>1500</span><br><br>
-    RC Channel 2: <input type='range' id='rc2' min='1000' max='2000' value='1500' disabled /> <span id='rc2Val'>1500</span><br><br>
-    <div id='container'><div id='ball'></div></div>
-    <h2>IMU Data</h2>
-    <p>Pitch: <span id='pitch'>0</span>&#176</p>
-    <p>Roll: <span id='roll'>0</span>&#176</p>
-    <p>Heading: <span id='heading'>0</span>&#176</p>
-    <p>Gyro: X: <span id='gyroX'>0</span> &#176/s, Y: <span id='gyroY'>0</span> &#176/s, Z: <span id='gyroZ'>0</span> &#176/s</p>
-    <p>Accel: X: <span id='accelX'>0</span> m/s^2, Y: <span id='accelY'>0</span> m/s^2, Z: <span id='accelZ'>0</span> m/s^2</p>
-    <p>Mag: X: <span id='magX'>0</span> uT, Y: <span id='magY'>0</span> uT, Z: <span id='magZ'>0</span> uT</p>
-    <div id='boatContainer'>
-      <svg id='boat' viewBox='0 0 100 100'>
-        <polygon points='50,0 90,80 50,70 10,80' fill='blue' stroke='black' stroke-width='2'/>
-      </svg>
-    </div>
-    </body>
-    </html>
-    )rawliteral";
+  <!DOCTYPE html>
+  <html>
+
+  <head>
+      <meta name='viewport' content='width=device-width, initial-scale=1'>
+      <title>Triton Portal</title>
+      <style>
+          body {
+              text-align: center;
+              font-family: Arial, sans-serif;
+          }
+
+          #container {
+              position: relative;
+              width: 300px;
+              height: 300px;
+              border-radius: 50%;
+              border: 2px solid black;
+              margin: auto;
+          }
+
+          #ball {
+              position: absolute;
+              width: 20px;
+              height: 20px;
+              background: red;
+              border-radius: 50%;
+          }
+
+          #boatContainer {
+              width: 300px;
+              height: 300px;
+              margin: auto;
+              position: relative;
+              perspective: 800px;
+              border: 1px solid #ccc;
+          }
+
+          #boat {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              width: 150px;
+              height: 150px;
+              transform: translate(-50%, -50%);
+              transform-origin: center;
+          }
+      </style>
+      <script>
+          var xhr = new XMLHttpRequest();
+          function updateRC() {
+              xhr.open('GET', '/rc', true);
+              xhr.onreadystatechange = function () {
+                  if (xhr.readyState == 4 && xhr.status == 200) {
+                      var data = JSON.parse(xhr.responseText);
+                      document.getElementById('rc1').value = data.ch1;
+                      document.getElementById('rc2').value = data.ch2;
+                      document.getElementById('rc1Val').innerHTML = data.ch1;
+                      document.getElementById('rc2Val').innerHTML = data.ch2;
+                      var xInput = (data.ch1 - 1500) / 500;
+                      var yInput = -1 * (data.ch2 - 1500) / 500;
+                      var magnitude = Math.sqrt(xInput * xInput + yInput * yInput);
+                      if (magnitude > 1) { xInput /= magnitude; yInput /= magnitude; }
+                      var radius = 140;
+                      var x = xInput * radius + 150 - 10;
+                      var y = yInput * radius + 150 - 10;
+                      document.getElementById('ball').style.left = x + 'px';
+                      document.getElementById('ball').style.top = y + 'px';
+                  }
+              };
+              xhr.send();
+          }
+          function updateESC() {
+              var xhr_esc = new XMLHttpRequest();
+              xhr_esc.open('GET', '/esc', true);
+              xhr_esc.onreadystatechange = function () {
+                  if (xhr_esc.readyState == 4 && xhr_esc.status == 200) {
+                      var esc = JSON.parse(xhr_esc.responseText);
+                      document.getElementById('esc1').value = esc.esc1;
+                      document.getElementById('esc2').value = esc.esc2;
+                      document.getElementById('esc3').value = esc.esc3;
+                      document.getElementById('esc4').value = esc.esc4;
+
+                      document.getElementById('esc1Val').innerHTML = esc.esc1;
+                      document.getElementById('esc2Val').innerHTML = esc.esc2;
+                      document.getElementById('esc3Val').innerHTML = esc.esc3;
+                      document.getElementById('esc4Val').innerHTML = esc.esc4;
+                  }
+              };
+              xhr_esc.send();
+          }
+
+          function updateIMU() {
+              var xhr_imu = new XMLHttpRequest();
+              xhr_imu.open('GET', '/imu', true);
+              xhr_imu.onreadystatechange = function () {
+                  if (xhr_imu.readyState == 4 && xhr_imu.status == 200) {
+                      var imu = JSON.parse(xhr_imu.responseText);
+                      document.getElementById('pitch').innerHTML = imu.pitch;
+                      document.getElementById('roll').innerHTML = imu.roll;
+                      document.getElementById('heading').innerHTML = imu.heading;
+                      document.getElementById('gyroX').innerHTML = imu.gyroX;
+                      document.getElementById('gyroY').innerHTML = imu.gyroY;
+                      document.getElementById('gyroZ').innerHTML = imu.gyroZ;
+                      document.getElementById('accelX').innerHTML = imu.accelX;
+                      document.getElementById('accelY').innerHTML = imu.accelY;
+                      document.getElementById('accelZ').innerHTML = imu.accelZ;
+                      document.getElementById('magX').innerHTML = imu.magX;
+                      document.getElementById('magY').innerHTML = imu.magY;
+                      document.getElementById('magZ').innerHTML = imu.magZ;
+                      var Zrot = 0;
+                      if (imu.pitch < 0) {
+                          Zrot = 180;
+                      } else {
+                          Zrot = 0;
+                      }
+                      var boat = document.getElementById('boat');
+                      if (boat) {
+                          boat.style.transform = 'translate(-50%, -50%) ' + ' rotateX(' + imu.pitch + 'deg) rotateY(' + (-imu.roll) + 'deg) rotateZ(' + Zrot + 'deg)';
+                      }
+                  }
+              };
+              xhr_imu.send();
+          }
+          setInterval(updateRC, 150);
+          setInterval(updateIMU, 150);
+          setInterval(updateESC, 150);
+      </script>
+  </head>
+
+  <body>
+      <h1>Triton Portal</h1>
+      <h2>Remote Control</h2>
+      RC Channel 1: <input type='range' id='rc1' min='1000' max='2000' value='1500' disabled /> <span
+          id='rc1Val'>1500</span><br><br>
+      RC Channel 2: <input type='range' id='rc2' min='1000' max='2000' value='1500' disabled /> <span
+          id='rc2Val'>1500</span><br><br>
+      <div id='container'>
+          <div id='ball'></div>
+      </div>
+      <h2>ESC Values</h2>
+      ESC1: <input type='range' id='esc1' min='1000' max='2000' value='1500' disabled /> <span
+          id='esc1Val'>1500</span><br><br>
+      ESC2: <input type='range' id='esc2' min='1000' max='2000' value='1500' disabled /> <span
+          id='esc2Val'>1500</span><br><br>
+      ESC3: <input type='range' id='esc3' min='1000' max='2000' value='1500' disabled /> <span
+          id='esc3Val'>1500</span><br><br>
+      ESC4: <input type='range' id='esc4' min='1000' max='2000' value='1500' disabled /> <span
+          id='esc4Val'>1500</span><br><br>
+      <h2>IMU Data</h2>
+      <p>Pitch: <span id='pitch'>0</span>&#176</p>
+      <p>Roll: <span id='roll'>0</span>&#176</p>
+      <p>Heading: <span id='heading'>0</span>&#176</p>
+      <p>Gyro: X: <span id='gyroX'>0</span> &#176/s, Y: <span id='gyroY'>0</span> &#176/s, Z: <span id='gyroZ'>0</span>
+          &#176/s</p>
+      <p>Accel: X: <span id='accelX'>0</span> m/s^2, Y: <span id='accelY'>0</span> m/s^2, Z: <span id='accelZ'>0</span>
+          m/s^2</p>
+      <p>Mag: X: <span id='magX'>0</span> uT, Y: <span id='magY'>0</span> uT, Z: <span id='magZ'>0</span> uT</p>
+      <div id='boatContainer'>
+          <svg id='boat' viewBox='0 0 100 100'>
+              <polygon points='50,0 90,80 50,70 10,80' fill='blue' stroke='black' stroke-width='2' />
+          </svg>
+      </div>
+  </body>
+
+  </html>
+  )rawliteral";
 
   server.send(200, "text/html", html);
 }
@@ -344,6 +424,14 @@ void handleIMU()
            magData.y / 16.0,
            magData.z / 16.0);
 
+  server.send(200, "application/json", jsonResponse);
+}
+
+void handleESC()
+{
+  char jsonResponse[128];
+  snprintf(jsonResponse, sizeof(jsonResponse), "{\"esc1\":%d,\"esc2\":%d,\"esc3\":%d,\"esc4\":%d}",
+           ESCvalues[0], ESCvalues[1], ESCvalues[2], ESCvalues[3]);
   server.send(200, "application/json", jsonResponse);
 }
 
