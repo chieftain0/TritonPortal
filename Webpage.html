@@ -57,6 +57,8 @@
                     document.getElementById('rc2').value = data.ch2;
                     document.getElementById('rc1Val').innerHTML = data.ch1;
                     document.getElementById('rc2Val').innerHTML = data.ch2;
+                    document.getElementById('rcMode').checked = data.rcMode;
+                    document.getElementById('conveyorState').checked = data.conveyorState;
                     var xInput = (data.ch1 - 1500) / 500;
                     var yInput = -1 * (data.ch2 - 1500) / 500;
                     var magnitude = Math.sqrt(xInput * xInput + yInput * yInput);
@@ -131,6 +133,14 @@
 <body>
     <h1>Triton Portal</h1>
     <h2>Remote Control</h2>
+    <label>
+        RC Mode:
+        <input type="checkbox" id="rcMode" disabled />
+    </label><br><br>
+    <label>
+        Conveyor:
+        <input type="checkbox" id="conveyorState" disabled />
+    </label><br><br>
     RC Channel 1: <input type='range' id='rc1' min='1000' max='2000' value='1500' disabled /> <span
         id='rc1Val'>1500</span><br><br>
     RC Channel 2: <input type='range' id='rc2' min='1000' max='2000' value='1500' disabled /> <span

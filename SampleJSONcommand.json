@@ -1,0 +1,9 @@
+{
+  "GET_IMU": 1,
+  "SET_RC_MODE": 0,
+  "SET_CONVEYOR_MODE": 0,
+  "ESC1": 2000,
+  "ESC2": 1500,
+  "ESC3": 1500,
+  "ESC4": 2500
+}
