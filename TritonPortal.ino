@@ -31,15 +31,16 @@ Servo ESC4;
 // GPIO pin definitions
 const uint8_t ESCPins[4] = {6, 7, 15, 16};
 volatile int ESCvalues[4] = {1500, 1500, 1500, 1500};
-const uint8_t ch1 = 13, ch2 = 12;
+const uint8_t ch1 = 13, ch2 = 12, ch3 = 11;
 const uint8_t SDA_pin = 4, SCL_pin = 5;
-const gpio_num_t relayPin = GPIO_NUM_11;
+const gpio_num_t relayPin = GPIO_NUM_10;
+const gpio_num_t LEDpin = GPIO_NUM_21;
 
 // Global variables
 #define BUFFER_SIZE 1024
 #define MIN_ESC_VALUE 1000
 #define MAX_ESC_VALUE 2000
-volatile unsigned long highTime1 = 1500, highTime2 = 1500;
+volatile unsigned long highTime1 = 1500, highTime2 = 1500, highTime3 = 1000;
 volatile bool RCmode = true;
 volatile bool ConveyorRelayState = false;
 
@@ -68,6 +69,19 @@ void IRAM_ATTR pulseCh2()
   }
 }
 
+void IRAM_ATTR pulseCh3()
+{
+  static unsigned long startTime = 0;
+  if (REG_READ(GPIO_IN_REG) & (1 << ch3))
+  {
+    startTime = micros();
+  }
+  else
+  {
+    highTime3 = micros() - startTime;
+  }
+}
+
 void setup()
 {
   // Start serial communication
@@ -86,10 +100,12 @@ void setup()
   pinMode(ch1, INPUT);
   pinMode(ch2, INPUT);
   pinMode(relayPin, OUTPUT);
+  pinMode(LEDpin, OUTPUT);
 
   // Setup interrupts
   attachInterrupt(digitalPinToInterrupt(ch1), pulseCh1, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ch2), pulseCh2, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ch3), pulseCh3, CHANGE);
 
   // Setup IMU and routines
   BNO_Init(&BNO);
@@ -126,10 +142,11 @@ void loop()
 {
   if (RCmode)
   {
-    ESCvalues[0] = constrain(highTime2 + (highTime1 - 1500), 1000, 2000);
-    ESCvalues[1] = constrain(highTime2 - (highTime1 - 1500), 1000, 2000);
-    ESCvalues[2] = constrain(highTime2 + (highTime1 - 1500), 1000, 2000);
-    ESCvalues[3] = constrain(highTime2 - (highTime1 - 1500), 1000, 2000);
+    ESCvalues[0] = constrain(((highTime2 + (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
+    ESCvalues[1] = constrain(((highTime2 - (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
+    ESCvalues[2] = constrain(((highTime2 + (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
+    ESCvalues[3] = constrain(((highTime2 - (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
+    ConveyorRelayState = (highTime3 > 1500);
   }
   if (Serial.available() > 0)
   {
@@ -161,6 +178,11 @@ void loop()
         }
         else
         {
+          // If any ESC value is out of range, stop all ESCs
+          ESCvalues[0] = 1500;
+          ESCvalues[1] = 1500;
+          ESCvalues[2] = 1500;
+          ESCvalues[3] = 1500;
           Serial.print(escKey);
           Serial.print("_VALUE_ERROR\r\n");
         }
@@ -172,11 +194,13 @@ void loop()
     }
   }
 
+  // Apply Controls
   ESC1.writeMicroseconds(ESCvalues[0]);
   ESC2.writeMicroseconds(ESCvalues[1]);
   ESC3.writeMicroseconds(ESCvalues[2]);
   ESC4.writeMicroseconds(ESCvalues[3]);
   gpio_set_level(relayPin, ConveyorRelayState);
+  gpio_set_level(LEDpin, ConveyorRelayState);
 }
 
 void handleRoot()
@@ -415,7 +439,8 @@ void handleIMU()
 void handleESC()
 {
   char jsonResponse[128];
-  snprintf(jsonResponse, sizeof(jsonResponse), "{\"esc1\":%d,\"esc2\":%d,\"esc3\":%d,\"esc4\":%d}",
+  snprintf(jsonResponse, sizeof(jsonResponse),
+           "{\"esc1\":%d,\"esc2\":%d,\"esc3\":%d,\"esc4\":%d}",
            ESCvalues[0], ESCvalues[1], ESCvalues[2], ESCvalues[3]);
   server.send(200, "application/json", jsonResponse);
 }
