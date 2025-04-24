@@ -43,13 +43,6 @@ volatile unsigned long highTime1 = 1500, highTime2 = 1500;
 volatile bool RCmode = true;
 volatile bool ConveyorRelayState = false;
 
-void readIMU(TimerHandle_t xTimer)
-{
-  bno055_read_euler_hrp(&hrpEulerData); // divide by 16 for °
-  bno055_read_gyro_xyz(&gyroData);      // divide by 16 for °/s
-  bno055_read_accel_xyz(&accelData);    // divide by 100 for m/s^2
-  bno055_read_mag_xyz(&magData);        // divide by 16 for uT
-}
 void IRAM_ATTR pulseCh1()
 {
   static unsigned long startTime = 0;
@@ -59,7 +52,7 @@ void IRAM_ATTR pulseCh1()
   }
   else
   {
-    highTime1 = micros() - startTime + 35; // small offset
+    highTime1 = micros() - startTime;
   }
 }
 void IRAM_ATTR pulseCh2()
@@ -71,7 +64,7 @@ void IRAM_ATTR pulseCh2()
   }
   else
   {
-    highTime2 = micros() - startTime + 35; // small offset
+    highTime2 = micros() - startTime;
   }
 }
 
@@ -101,8 +94,6 @@ void setup()
   // Setup IMU and routines
   BNO_Init(&BNO);
   bno055_set_operation_mode(OPERATION_MODE_NDOF);
-  rtosTimer = xTimerCreate("RTOS_Timer", pdMS_TO_TICKS(100), pdTRUE, NULL, readIMU);
-  xTimerStart(rtosTimer, 0);
 
   // Setup web server and RTOS
   server.on("/", handleRoot);
@@ -442,6 +433,11 @@ void RespondWithIMU()
 {
   if (Serial)
   {
+    bno055_read_euler_hrp(&hrpEulerData); // divide by 16 for °
+    bno055_read_gyro_xyz(&gyroData);      // divide by 16 for °/s
+    bno055_read_accel_xyz(&accelData);    // divide by 100 for m/s^2
+    bno055_read_mag_xyz(&magData);        // divide by 16 for uT
+
     JsonDocument response;
     JsonObject IMU = response["IMU"].to<JsonObject>();
     IMU["pitch"] = hrpEulerData.p / 16.0;
