@@ -23,10 +23,7 @@ TimerHandle_t rtosTimer;
 WebServer server(80);
 
 // ESC objects
-Servo ESC1;
-Servo ESC2;
-Servo ESC3;
-Servo ESC4;
+Servo ESC[4] = {Servo(), Servo(), Servo(), Servo()};
 
 // GPIO pin definitions
 const uint8_t ESCPins[4] = {6, 7, 15, 16};
@@ -91,10 +88,10 @@ void setup()
   Wire.begin(SDA_pin, SCL_pin);
 
   // Setup ESCs
-  ESC1.attach(ESCPins[0]);
-  ESC2.attach(ESCPins[1]);
-  ESC3.attach(ESCPins[2]);
-  ESC4.attach(ESCPins[3]);
+  ESC[0].attach(ESCPins[0]);
+  ESC[1].attach(ESCPins[1]);
+  ESC[2].attach(ESCPins[2]);
+  ESC[3].attach(ESCPins[3]);
 
   // Setup RC inputs
   pinMode(ch1, INPUT);
@@ -142,11 +139,32 @@ void loop()
 {
   if (RCmode)
   {
-    ESCvalues[0] = constrain(((highTime2 + (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
-    ESCvalues[1] = constrain(((highTime2 - (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
-    ESCvalues[2] = constrain(((highTime2 + (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
-    ESCvalues[3] = constrain(((highTime2 - (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
-    ConveyorRelayState = (highTime3 > 1500);
+    if (ESCvalues[0] != constrain(((highTime2 + (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE))
+    {
+      ESCvalues[0] = constrain(((highTime2 + (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
+      ESC[0].writeMicroseconds(ESCvalues[0]);
+    }
+    if (ESCvalues[1] != constrain(((highTime2 - (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE))
+    {
+      ESCvalues[1] = constrain(((highTime2 - (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
+      ESC[0].writeMicroseconds(ESCvalues[1]);
+    }
+    if (ESCvalues[2] != constrain(((highTime2 + (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE))
+    {
+      ESCvalues[2] = constrain(((highTime2 + (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
+      ESC[0].writeMicroseconds(ESCvalues[2]);
+    }
+    if (ESCvalues[3] != constrain(((highTime2 - (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE))
+    {
+      ESCvalues[3] = constrain(((highTime2 - (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
+      ESC[0].writeMicroseconds(ESCvalues[3]);
+    }
+    if (ConveyorRelayState != (highTime3 > 1500))
+    {
+      ConveyorRelayState = (highTime3 > 1500);
+      gpio_set_level(relayPin, ConveyorRelayState);
+      gpio_set_level(LEDpin, ConveyorRelayState);
+    }
   }
   if (Serial.available() > 0)
   {
@@ -174,15 +192,20 @@ void loop()
         snprintf(escKey, sizeof(escKey), "ESC%d\0", i + 1);
         if (jsonCommand[escKey] >= MIN_ESC_VALUE && jsonCommand[escKey] <= MAX_ESC_VALUE)
         {
-          ESCvalues[i] = jsonCommand[escKey];
+          if (ESCvalues[i] != int(jsonCommand[escKey]))
+          {
+            ESCvalues[i] = int(jsonCommand[escKey]);
+            ESC[i].writeMicroseconds(ESCvalues[i]);
+          }
         }
         else
         {
           // If any ESC value is out of range, stop all ESCs
-          ESCvalues[0] = 1500;
-          ESCvalues[1] = 1500;
-          ESCvalues[2] = 1500;
-          ESCvalues[3] = 1500;
+          for (int j = 0; j < 4; j++)
+          {
+            ESCvalues[j] = 1500;
+            ESC[j].writeMicroseconds(1500);
+          }
           Serial.print(escKey);
           Serial.print("_VALUE_ERROR\r\n");
         }
@@ -193,14 +216,6 @@ void loop()
       RespondWithIMU();
     }
   }
-
-  // Apply Controls
-  ESC1.writeMicroseconds(ESCvalues[0]);
-  ESC2.writeMicroseconds(ESCvalues[1]);
-  ESC3.writeMicroseconds(ESCvalues[2]);
-  ESC4.writeMicroseconds(ESCvalues[3]);
-  gpio_set_level(relayPin, ConveyorRelayState);
-  gpio_set_level(LEDpin, ConveyorRelayState);
 }
 
 void handleRoot()
