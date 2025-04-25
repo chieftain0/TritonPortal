@@ -38,8 +38,8 @@ const gpio_num_t LEDpin = GPIO_NUM_21;
 #define MIN_ESC_VALUE 1000
 #define MAX_ESC_VALUE 2000
 volatile unsigned long highTime1 = 1500, highTime2 = 1500, highTime3 = 1000;
-volatile bool RCmode = true;
-volatile bool ConveyorRelayState = false;
+volatile bool RCmode = 1;
+volatile bool ConveyorRelayState = 0;
 
 void IRAM_ATTR pulseCh1()
 {
@@ -89,9 +89,13 @@ void setup()
 
   // Setup ESCs
   ESC[0].attach(ESCPins[0]);
+  ESC[0].writeMicroseconds(ESCvalues[0]);
   ESC[1].attach(ESCPins[1]);
+  ESC[1].writeMicroseconds(ESCvalues[1]);
   ESC[2].attach(ESCPins[2]);
+  ESC[2].writeMicroseconds(ESCvalues[2]);
   ESC[3].attach(ESCPins[3]);
+  ESC[3].writeMicroseconds(ESCvalues[3]);
 
   // Setup RC inputs
   pinMode(ch1, INPUT);
@@ -139,25 +143,25 @@ void loop()
 {
   if (RCmode)
   {
-    if (ESCvalues[0] != constrain(((highTime2 + (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE))
+    if (ESCvalues[0] != constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
     {
-      ESCvalues[0] = constrain(((highTime2 + (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
+      ESCvalues[0] = constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
       ESC[0].writeMicroseconds(ESCvalues[0]);
     }
-    if (ESCvalues[1] != constrain(((highTime2 - (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE))
+    if (ESCvalues[1] != constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
     {
-      ESCvalues[1] = constrain(((highTime2 - (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
-      ESC[0].writeMicroseconds(ESCvalues[1]);
+      ESCvalues[1] = constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
+      ESC[1].writeMicroseconds(ESCvalues[1]);
     }
-    if (ESCvalues[2] != constrain(((highTime2 + (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE))
+    if (ESCvalues[2] != constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
     {
-      ESCvalues[2] = constrain(((highTime2 + (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
-      ESC[0].writeMicroseconds(ESCvalues[2]);
+      ESCvalues[2] = constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
+      ESC[2].writeMicroseconds(ESCvalues[2]);
     }
-    if (ESCvalues[3] != constrain(((highTime2 - (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE))
+    if (ESCvalues[3] != constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
     {
-      ESCvalues[3] = constrain(((highTime2 - (highTime1 - 1500) + 25) / 50) * 50, MIN_ESC_VALUE, MAX_ESC_VALUE);
-      ESC[0].writeMicroseconds(ESCvalues[3]);
+      ESCvalues[3] = constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
+      ESC[3].writeMicroseconds(ESCvalues[3]);
     }
     if (ConveyorRelayState != (highTime3 > 1500))
     {
@@ -189,7 +193,7 @@ void loop()
       for (int i = 0; i < 4; i++)
       {
         char escKey[6];
-        snprintf(escKey, sizeof(escKey), "ESC%d\0", i + 1);
+        snprintf(escKey, sizeof(escKey), "ESC%d", i + 1);
         if (jsonCommand[escKey] >= MIN_ESC_VALUE && jsonCommand[escKey] <= MAX_ESC_VALUE)
         {
           if (ESCvalues[i] != int(jsonCommand[escKey]))
