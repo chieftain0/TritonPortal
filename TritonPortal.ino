@@ -100,8 +100,10 @@ void setup()
   // Setup RC inputs
   pinMode(ch1, INPUT);
   pinMode(ch2, INPUT);
-  pinMode(relayPin, OUTPUT);
+
+  // Setup relay and LED pins
   pinMode(LEDpin, OUTPUT);
+  ledcAttach(relayPin, 250, 8);
 
   // Setup interrupts
   attachInterrupt(digitalPinToInterrupt(ch1), pulseCh1, CHANGE);
@@ -166,7 +168,7 @@ void loop()
     if (ConveyorRelayState != (highTime3 > 1500))
     {
       ConveyorRelayState = (highTime3 > 1500);
-      gpio_set_level(relayPin, ConveyorRelayState);
+      ledcWrite(relayPin, ConveyorRelayState * 128);
       gpio_set_level(LEDpin, ConveyorRelayState);
     }
   }
