@@ -204,7 +204,7 @@ void loop()
       }
       else
       {
-        Serial.print("DUTY_CYCLE_VALUE_ERROR\r\n");
+        Serial.print("CONVEYOR_DUTY_CYCLE_VALUE_ERROR\r\n");
       }
     }
 
