@@ -40,6 +40,7 @@ const gpio_num_t LEDpin = GPIO_NUM_21;
 volatile unsigned long highTime1 = 1500, highTime2 = 1500, highTime3 = 1000;
 volatile bool RCmode = 1;
 volatile bool ConveyorRelayState = 0;
+volatile double ConveyorDutyCycle = 0.5;
 
 void IRAM_ATTR pulseCh1()
 {
@@ -168,7 +169,7 @@ void loop()
     if (ConveyorRelayState != (highTime3 > 1500))
     {
       ConveyorRelayState = (highTime3 > 1500);
-      ledcWrite(relayPin, ConveyorRelayState * 128);
+      ledcWrite(relayPin, uint8_t(ConveyorRelayState * ConveyorDutyCycle * 255));
       gpio_set_level(LEDpin, ConveyorRelayState);
     }
   }
@@ -187,15 +188,32 @@ void loop()
       return;
     }
 
-    RCmode = bool(jsonCommand["SET_RC_MODE"]);
-    ConveyorRelayState = bool(jsonCommand["SET_CONVEYOR_MODE"]);
-
-    if (!RCmode)
+    if (jsonCommand.containsKey("SET_RC_MODE"))
     {
-      for (int i = 0; i < 4; i++)
+      RCmode = bool(jsonCommand["SET_RC_MODE"]);
+    }
+    if (jsonCommand.containsKey("SET_CONVEYOR_MODE"))
+    {
+      ConveyorRelayState = bool(jsonCommand["SET_CONVEYOR_MODE"]);
+    }
+    if (jsonCommand.containsKey("SET_CONVEYOR_DUTY_CYCLE"))
+    {
+      if (double(jsonCommand["SET_CONVEYOR_DUTY_CYCLE"]) >= 0.0 && double(jsonCommand["SET_CONVEYOR_DUTY_CYCLE"]) <= 1.0)
       {
-        char escKey[6];
-        snprintf(escKey, sizeof(escKey), "ESC%d", i + 1);
+        ConveyorDutyCycle = double(jsonCommand["SET_CONVEYOR_DUTY_CYCLE"]);
+      }
+      else
+      {
+        Serial.print("DUTY_CYCLE_VALUE_ERROR\r\n");
+      }
+    }
+
+    for (int i = 0; i < 4; i++)
+    {
+      char escKey[6];
+      snprintf(escKey, sizeof(escKey), "ESC%d", i + 1);
+      if (jsonCommand.containsKey(escKey) && RCmode == false)
+      {
         if (jsonCommand[escKey] >= MIN_ESC_VALUE && jsonCommand[escKey] <= MAX_ESC_VALUE)
         {
           if (ESCvalues[i] != int(jsonCommand[escKey]))
@@ -217,9 +235,13 @@ void loop()
         }
       }
     }
-    if (jsonCommand["GET_IMU"]) // Respond with IMU data
+
+    if (jsonCommand.containsKey("GET_IMU") && jsonCommand["GET_IMU"]) // Respond with IMU data
     {
-      RespondWithIMU();
+      JsonDocument response;
+      GetIMUinJSON(response);
+      serializeJson(response, Serial);
+      Serial.print("\r\n");
     }
   }
 }
@@ -474,34 +496,26 @@ void SafeDelay(unsigned long ms)
     yield();
   }
 }
-
-void RespondWithIMU()
+void GetIMUinJSON(JsonDocument &doc)
 {
-  if (Serial)
-  {
-    bno055_read_euler_hrp(&hrpEulerData); // divide by 16 for °
-    bno055_read_gyro_xyz(&gyroData);      // divide by 16 for °/s
-    bno055_read_accel_xyz(&accelData);    // divide by 100 for m/s^2
-    bno055_read_mag_xyz(&magData);        // divide by 16 for uT
+  bno055_read_euler_hrp(&hrpEulerData); // divide by 16 for °
+  bno055_read_gyro_xyz(&gyroData);      // divide by 16 for °/s
+  bno055_read_accel_xyz(&accelData);    // divide by 100 for m/s^2
+  bno055_read_mag_xyz(&magData);        // divide by 16 for uT
 
-    JsonDocument response;
-    JsonObject IMU = response["IMU"].to<JsonObject>();
-    IMU["pitch"] = hrpEulerData.p / 16.0;
-    IMU["roll"] = hrpEulerData.r / 16.0;
-    IMU["heading"] = hrpEulerData.h / 16.0;
-    IMU["accel_x"] = accelData.x / 100.0;
-    IMU["accel_y"] = accelData.y / 100.0;
-    IMU["accel_z"] = accelData.z / 100.0;
-    IMU["gyro_x"] = gyroData.x / 16.0;
-    IMU["gyro_y"] = gyroData.y / 16.0;
-    IMU["gyro_z"] = gyroData.z / 16.0;
-    IMU["mag_x"] = magData.x / 16.0;
-    IMU["mag_y"] = magData.y / 16.0;
-    IMU["mag_z"] = magData.z / 16.0;
+  JsonObject IMU = doc["IMU"].to<JsonObject>();
+  IMU["pitch"] = hrpEulerData.p / 16.0;
+  IMU["roll"] = hrpEulerData.r / 16.0;
+  IMU["heading"] = hrpEulerData.h / 16.0;
+  IMU["accel_x"] = accelData.x / 100.0;
+  IMU["accel_y"] = accelData.y / 100.0;
+  IMU["accel_z"] = accelData.z / 100.0;
+  IMU["gyro_x"] = gyroData.x / 16.0;
+  IMU["gyro_y"] = gyroData.y / 16.0;
+  IMU["gyro_z"] = gyroData.z / 16.0;
+  IMU["mag_x"] = magData.x / 16.0;
+  IMU["mag_y"] = magData.y / 16.0;
+  IMU["mag_z"] = magData.z / 16.0;
 
-    response.shrinkToFit();
-
-    serializeJson(response, Serial);
-    Serial.print("\r\n");
-  }
+  doc.shrinkToFit();
 }

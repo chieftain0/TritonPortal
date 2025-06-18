@@ -2,6 +2,7 @@
   "GET_IMU": 1,
   "SET_RC_MODE": 0,
   "SET_CONVEYOR_MODE": 0,
+  "SET_CONVEYOR_DUTY_CYCLE": 0.5,
   "ESC1": 2000,
   "ESC2": 1500,
   "ESC3": 1500,
