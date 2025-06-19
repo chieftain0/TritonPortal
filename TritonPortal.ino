@@ -144,35 +144,6 @@ void webServerTask(void *pvParameters)
 
 void loop()
 {
-  if (RCmode)
-  {
-    if (ESCvalues[0] != constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
-    {
-      ESCvalues[0] = constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
-      ESC[0].writeMicroseconds(ESCvalues[0]);
-    }
-    if (ESCvalues[1] != constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
-    {
-      ESCvalues[1] = constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
-      ESC[1].writeMicroseconds(ESCvalues[1]);
-    }
-    if (ESCvalues[2] != constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
-    {
-      ESCvalues[2] = constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
-      ESC[2].writeMicroseconds(ESCvalues[2]);
-    }
-    if (ESCvalues[3] != constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
-    {
-      ESCvalues[3] = constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
-      ESC[3].writeMicroseconds(ESCvalues[3]);
-    }
-    if (ConveyorRelayState != (highTime3 > 1500))
-    {
-      ConveyorRelayState = (highTime3 > 1500);
-      ledcWrite(relayPin, uint8_t(ConveyorRelayState * ConveyorDutyCycle * 255));
-      gpio_set_level(LEDpin, ConveyorRelayState);
-    }
-  }
   if (Serial.available() > 0)
   {
     JsonDocument jsonCommand;
@@ -208,7 +179,7 @@ void loop()
       }
     }
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4 && RCmode == false; i++)
     {
       char escKey[6];
       snprintf(escKey, sizeof(escKey), "ESC%d", i + 1);
@@ -219,30 +190,62 @@ void loop()
           if (ESCvalues[i] != int(jsonCommand[escKey]))
           {
             ESCvalues[i] = int(jsonCommand[escKey]);
-            ESC[i].writeMicroseconds(ESCvalues[i]);
           }
         }
         else
         {
-          // If any ESC value is out of range, stop all ESCs
-          for (int j = 0; j < 4; j++)
-          {
-            ESCvalues[j] = 1500;
-            ESC[j].writeMicroseconds(1500);
-          }
           Serial.print(escKey);
           Serial.print("_VALUE_ERROR\r\n");
         }
       }
     }
 
-    if (jsonCommand.containsKey("GET_IMU") && jsonCommand["GET_IMU"]) // Respond with IMU data
+    if (jsonCommand.containsKey("GET_IMU") && jsonCommand["GET_IMU"])
     {
       JsonDocument response;
       GetIMUinJSON(response);
       serializeJson(response, Serial);
       Serial.print("\r\n");
     }
+  }
+
+  if (RCmode)
+  {
+    if (ESCvalues[0] != constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
+    {
+      ESCvalues[0] = constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
+      ESC[0].writeMicroseconds(ESCvalues[0]);
+    }
+    if (ESCvalues[1] != constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
+    {
+      ESCvalues[1] = constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
+      ESC[1].writeMicroseconds(ESCvalues[1]);
+    }
+    if (ESCvalues[2] != constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
+    {
+      ESCvalues[2] = constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
+      ESC[2].writeMicroseconds(ESCvalues[2]);
+    }
+    if (ESCvalues[3] != constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
+    {
+      ESCvalues[3] = constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
+      ESC[3].writeMicroseconds(ESCvalues[3]);
+    }
+    if (ConveyorRelayState != (highTime3 > 1500))
+    {
+      ConveyorRelayState = (highTime3 > 1500);
+      ledcWrite(relayPin, uint8_t(ConveyorRelayState * ConveyorDutyCycle * 255));
+      gpio_set_level(LEDpin, ConveyorRelayState);
+    }
+  }
+  else
+  {
+    ESC[0].writeMicroseconds(ESCvalues[0]);
+    ESC[1].writeMicroseconds(ESCvalues[1]);
+    ESC[2].writeMicroseconds(ESCvalues[2]);
+    ESC[3].writeMicroseconds(ESCvalues[3]);
+    ledcWrite(relayPin, uint8_t(ConveyorRelayState * ConveyorDutyCycle * 255));
+    gpio_set_level(LEDpin, ConveyorRelayState);
   }
 }
 
