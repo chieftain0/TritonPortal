@@ -26,7 +26,7 @@ WebServer server(80);
 Servo ESC[4] = {Servo(), Servo(), Servo(), Servo()};
 
 // GPIO pin definitions
-const uint8_t ESCPins[4] = {6, 7, 15, 16};
+const gpio_num_t ESCPins[4] = {GPIO_NUM_6, GPIO_NUM_7, GPIO_NUM_15, GPIO_NUM_16};
 volatile int ESCvalues[4] = {1500, 1500, 1500, 1500};
 const uint8_t ch1 = 13, ch2 = 12, ch3 = 11;
 const uint8_t SDA_pin = 4, SCL_pin = 5;
@@ -87,6 +87,12 @@ void setup()
 
   // Start I2C communication
   Wire.begin(SDA_pin, SCL_pin);
+
+  // Set the drive strength for ESC pins
+  gpio_set_drive_capability(ESCPins[0], GPIO_DRIVE_CAP_3);
+  gpio_set_drive_capability(ESCPins[1], GPIO_DRIVE_CAP_3);
+  gpio_set_drive_capability(ESCPins[2], GPIO_DRIVE_CAP_3);
+  gpio_set_drive_capability(ESCPins[3], GPIO_DRIVE_CAP_3);
 
   // Setup ESCs
   ESC[0].attach(ESCPins[0]);
