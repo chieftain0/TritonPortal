@@ -169,10 +169,7 @@ void loop()
     {
       RCmode = bool(jsonCommand["SET_RC_MODE"]);
     }
-    if (jsonCommand.containsKey("SET_CONVEYOR_MODE"))
-    {
-      ConveyorRelayState = bool(jsonCommand["SET_CONVEYOR_MODE"]);
-    }
+
     if (jsonCommand.containsKey("SET_CONVEYOR_DUTY_CYCLE"))
     {
       if (double(jsonCommand["SET_CONVEYOR_DUTY_CYCLE"]) >= 0.0 && double(jsonCommand["SET_CONVEYOR_DUTY_CYCLE"]) <= 1.0)
@@ -185,73 +182,106 @@ void loop()
       }
     }
 
-    for (int i = 0; i < 4 && RCmode == false; i++)
+    if (jsonCommand.containsKey("SET_CONVEYOR_MODE") && RCmode == false)
     {
-      char escKey[6];
-      snprintf(escKey, sizeof(escKey), "ESC%d", i + 1);
-      if (jsonCommand.containsKey(escKey) && RCmode == false)
-      {
-        if (jsonCommand[escKey] >= MIN_ESC_VALUE && jsonCommand[escKey] <= MAX_ESC_VALUE)
-        {
-          if (ESCvalues[i] != int(jsonCommand[escKey]))
-          {
-            ESCvalues[i] = int(jsonCommand[escKey]);
-          }
-        }
-        else
-        {
-          Serial.print(escKey);
-          Serial.print("_VALUE_ERROR\r\n");
-        }
-      }
-    }
-
-    if (jsonCommand.containsKey("GET_IMU") && jsonCommand["GET_IMU"])
-    {
-      JsonDocument response;
-      GetIMUinJSON(response);
-      serializeJson(response, Serial);
-      Serial.print("\r\n");
-    }
-  }
-
-  if (RCmode)
-  {
-    if (ESCvalues[0] != constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
-    {
-      ESCvalues[0] = constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
-      ESC[0].writeMicroseconds(ESCvalues[0]);
-    }
-    if (ESCvalues[1] != constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
-    {
-      ESCvalues[1] = constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
-      ESC[1].writeMicroseconds(ESCvalues[1]);
-    }
-    if (ESCvalues[2] != constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
-    {
-      ESCvalues[2] = constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
-      ESC[2].writeMicroseconds(ESCvalues[2]);
-    }
-    if (ESCvalues[3] != constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
-    {
-      ESCvalues[3] = constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
-      ESC[3].writeMicroseconds(ESCvalues[3]);
-    }
-    if (ConveyorRelayState != (highTime3 > 1500))
-    {
-      ConveyorRelayState = (highTime3 > 1500);
+      ConveyorRelayState = bool(jsonCommand["SET_CONVEYOR_MODE"]);
       ledcWrite(relayPin, uint8_t(ConveyorRelayState * ConveyorDutyCycle * 255));
       gpio_set_level(LEDpin, ConveyorRelayState);
     }
-  }
-  else
-  {
-    ESC[0].writeMicroseconds(ESCvalues[0]);
-    ESC[1].writeMicroseconds(ESCvalues[1]);
-    ESC[2].writeMicroseconds(ESCvalues[2]);
-    ESC[3].writeMicroseconds(ESCvalues[3]);
-    ledcWrite(relayPin, uint8_t(ConveyorRelayState * ConveyorDutyCycle * 255));
-    gpio_set_level(LEDpin, ConveyorRelayState);
+
+    if (jsonCommand.containsKey("ESC1") && RCmode == false)
+    {
+      if (jsonCommand["ESC1"] >= MIN_ESC_VALUE && jsonCommand["ESC1"] <= MAX_ESC_VALUE)
+      {
+        if (ESCvalues[0] != int(jsonCommand["ESC1"]))
+        {
+          ESCvalues[0] = int(jsonCommand["ESC1"]);
+          ESC[0].writeMicroseconds(ESCvalues[0]);
+        }
+      }
+      else
+      {
+        Serial.print("ESC1_VALUE_ERROR\r\n");
+      }
+    }
+
+    if (jsonCommand.containsKey("ESC2") && RCmode == false)
+    {
+      if (jsonCommand["ESC2"] >= MIN_ESC_VALUE && jsonCommand["ESC2"] <= MAX_ESC_VALUE)
+      {
+        if (ESCvalues[1] != int(jsonCommand["ESC2"]))
+        {
+          ESCvalues[1] = int(jsonCommand["ESC2"]);
+          ESC[1].writeMicroseconds(ESCvalues[1]);
+        }
+      }
+      else
+      {
+        Serial.print("ESC2_VALUE_ERROR\r\n");
+      }
+    }
+
+    if (jsonCommand.containsKey("ESC3") && RCmode == false)
+    {
+      if (jsonCommand["ESC3"] >= MIN_ESC_VALUE && jsonCommand["ESC3"] <= MAX_ESC_VALUE)
+      {
+        if (ESCvalues[2] != int(jsonCommand["ESC3"]))
+        {
+          ESCvalues[2] = int(jsonCommand["ESC3"]);
+          ESC[2].writeMicroseconds(ESCvalues[2]);
+        }
+      }
+      else
+      {
+        Serial.print("ESC3_VALUE_ERROR\r\n");
+      }
+    }
+
+    if (jsonCommand.containsKey("ESC4") && RCmode == false)
+    {
+      if (jsonCommand["ESC4"] >= MIN_ESC_VALUE && jsonCommand["ESC4"] <= MAX_ESC_VALUE)
+      {
+        if (ESCvalues[3] != int(jsonCommand["ESC4"]))
+        {
+          ESCvalues[3] = int(jsonCommand["ESC4"]);
+          ESC[3].writeMicroseconds(ESCvalues[3]);
+        }
+      }
+      else
+      {
+        Serial.print("ESC4_VALUE_ERROR\r\n");
+      }
+    }
+
+    if (RCmode)
+    {
+      if (ESCvalues[0] != constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
+      {
+        ESCvalues[0] = constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
+        ESC[0].writeMicroseconds(ESCvalues[0]);
+      }
+      if (ESCvalues[1] != constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
+      {
+        ESCvalues[1] = constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
+        ESC[1].writeMicroseconds(ESCvalues[1]);
+      }
+      if (ESCvalues[2] != constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
+      {
+        ESCvalues[2] = constrain(((highTime2 + (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
+        ESC[2].writeMicroseconds(ESCvalues[2]);
+      }
+      if (ESCvalues[3] != constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE))
+      {
+        ESCvalues[3] = constrain(((highTime2 - (highTime1 - 1500) + 10) / 20) * 20, MIN_ESC_VALUE, MAX_ESC_VALUE);
+        ESC[3].writeMicroseconds(ESCvalues[3]);
+      }
+      if (ConveyorRelayState != (highTime3 > 1500))
+      {
+        ConveyorRelayState = (highTime3 > 1500);
+        ledcWrite(relayPin, uint8_t(ConveyorRelayState * ConveyorDutyCycle * 255));
+        gpio_set_level(LEDpin, ConveyorRelayState);
+      }
+    }
   }
 }
 
